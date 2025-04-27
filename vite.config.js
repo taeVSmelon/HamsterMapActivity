@@ -8,7 +8,6 @@ export default defineConfig({
   envDir: './',
   plugins: [vue()],
   server: {
-    port: 8000,
     allowedHosts: [
       'hamstermapactivity-production.up.railway.app',
       'barry-reputation-presented-this.trycloudflare.com',
