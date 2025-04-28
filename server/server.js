@@ -15,7 +15,7 @@ dotenv.config({ path: "./.env" });
 
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.SERVER_PORT || 8000;
+const PORT = process.env.SERVER_PORT || 3000;
 const stateCache = {};
 
 connectDB();
@@ -23,6 +23,11 @@ connectDB();
 app.use(express.json());
 app.set("trust proxy", true);
 app.set("view engine", "ejs");
+
+// เสิร์ฟไฟล์ static จาก dist/
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use(express.static(path.join(__dirname, '..', 'dist')));
 
 app.use((req, res, next) => {
   const currentTime = new Date().toISOString();
