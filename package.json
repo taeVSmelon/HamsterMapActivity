@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"vite\" \"nodemon server/server.js\"",
+    "game": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "server": "nodemon server/server.js",
