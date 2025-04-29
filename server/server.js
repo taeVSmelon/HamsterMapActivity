@@ -29,11 +29,11 @@ app.use(express.json());
 app.set("trust proxy", true);
 app.set("view engine", "ejs");
 app.set('views', path.join(__dirname, './views'));
-app.use(express.static(path.join(__dirname, '../dist')))
+app.use(express.static(path.join(__dirname, '../dist')));
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'))
-})
+});
 
 app.use((req, res, next) => {
   const currentTime = new Date().toISOString();
