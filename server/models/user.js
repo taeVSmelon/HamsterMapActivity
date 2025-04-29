@@ -41,7 +41,7 @@ const dataSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true , default : "1234554321"},
   name : { type: String, required: true },
-  discord_id : {type : String, default : ""},
+  discordId : {type : String, default : ""},
   friend: { type: [String] , default: []},
   stats: {type: statSchema, default: {} },
   score : { type: scoreSchema, default: {} },

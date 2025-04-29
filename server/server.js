@@ -24,11 +24,6 @@ app.use(express.json());
 app.set("trust proxy", true);
 app.set("view engine", "ejs");
 
-// เสิร์ฟไฟล์ static จาก dist/
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-app.use(express.static(path.join(__dirname, '..', 'dist')));
-
 app.use((req, res, next) => {
   const currentTime = new Date().toISOString();
   const method = req.method;
@@ -58,24 +53,25 @@ app.post("/discordToken", async (req, res) => {
 
   const responseJson = await response.json();
 
+  console.log("responseJson:", responseJson);
+
   res.send(responseJson);
 });
 
-app.post("/login", async (req, res) => {
-  const user = req.body.username;
-  const pass = req.body.password;
-  const data = await userModel.findOne({ username: user });
-  // console.log(data);
-  if (!data) return res.status(400).json({ message: "User not found" });
-  if (data.password !== pass) {
+app.post("/loginDiscord", async (req, res) => {
+  const { discordId, discordAccessToken, discordRefreshToken } = req.body;
+  const user = await userModel.findOne({ discordId });
+  // console.log(user);
+  if (!user) return res.status(400).json({ message: "User not found" });
+  if (user.password !== pass) {
     return res.status(400).json({ message: "Incorrect password" });
   }
 
-  const refreshToken = jwt.sign({ username: data.username }, JWT_SECRET, {
+  const refreshToken = jwt.sign({ username: user.username, discordAccessToken, discordRefreshToken }, JWT_SECRET, {
     expiresIn: "30d",
   });
   const accessToken = jwt.sign(
-    { username: data.username, refreshToken: refreshToken },
+    { username: user.username, discordAccessToken, discordRefreshToken, refreshToken: refreshToken },
     JWT_SECRET,
     { expiresIn: "1h" },
   );
@@ -94,7 +90,53 @@ app.post("/login", async (req, res) => {
   );
 
   await userModel.updateOne(
-    { username: data.username },
+    { username: user.username },
+    { $set: { refreshToken: refreshToken } },
+  );
+
+  res.status(200).json({
+    message: "Login successful",
+    refreshToken,
+    accessToken,
+    refreshTokenExpired,
+    accessTokenExpired,
+  });
+});
+
+app.post("/login", async (req, res) => {
+  const username = req.body.username;
+  const password = req.body.password;
+  const user = await userModel.findOne({ username });
+  // console.log(user);
+  if (!user) return res.status(400).json({ message: "User not found" });
+  if (user.password !== password) {
+    return res.status(400).json({ message: "Incorrect password" });
+  }
+
+  const refreshToken = jwt.sign({ username: user.username }, JWT_SECRET, {
+    expiresIn: "30d",
+  });
+  const accessToken = jwt.sign(
+    { username: user.username, refreshToken: refreshToken },
+    JWT_SECRET,
+    { expiresIn: "1h" },
+  );
+
+  const refreshTokenExpiredTime = new Date();
+  refreshTokenExpiredTime.setDate(refreshTokenExpiredTime.getDate() + 1);
+
+  const accessTokenExpiredTime = new Date();
+  accessTokenExpiredTime.setHours(accessTokenExpiredTime.getHours() + 1);
+
+  const refreshTokenExpired = Math.floor(
+    refreshTokenExpiredTime.getTime() / 1000,
+  );
+  const accessTokenExpired = Math.floor(
+    accessTokenExpiredTime.getTime() / 1000,
+  );
+
+  await userModel.updateOne(
+    { username: user.username },
     { $set: { refreshToken: refreshToken } },
   );
 

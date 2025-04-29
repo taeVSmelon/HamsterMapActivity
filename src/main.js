@@ -5,13 +5,9 @@ import App from "./App.vue";
 const CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID;
 const discordSdk = new DiscordSDK(CLIENT_ID);
 
-setupDiscordSdk().then((auth) => {
-  console.log("Auth:", auth);
-  //   appendVoiceChannelName();
-  //   appendUser(auth.user);
-  //   appendGuildAvatar(auth.access_token);
-
+setupDiscordSdk().then(async (auth) => {
   window._requestBaseApi = `${CLIENT_ID}.discordsays.com/.proxy/api`;
+  // window._haveUser = false;
   console.log("BaseApi:", window._requestBaseApi);
 });
 
@@ -52,5 +48,20 @@ async function setupDiscordSdk() {
 
   return auth;
 }
+
+// if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+//   const meta = document.createElement("meta")
+//   meta.name = "viewport";
+//   meta.content = "width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes";
+//   document.head.appendChild(meta);
+
+//   const canvas = document.querySelector("#unity-canvas");
+//   canvas.style.width = "100%";
+//   canvas.style.height = "100%";
+//   canvas.style.position = "fixed";
+
+//   document.body.style.textAlign = "left";
+// }
+
 
 createApp(App).mount("#app");

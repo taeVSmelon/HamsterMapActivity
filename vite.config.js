@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     allowedHosts: [
-      'hamstermapactivity-production.up.railway.app',
+      'decorating-spokesman-bookstore-consisting.trycloudflare.com',
       'barry-reputation-presented-this.trycloudflare.com',
       'localhost',  // ถ้ายังไม่เพิ่ม localhost
     ],
