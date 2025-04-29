@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,13 +13,13 @@
             box-sizing: border-box;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        
+
         body {
             display: flex;
             min-height: 100vh;
             background-color: #f5f5f5;
         }
-        
+
         .sidebar {
             width: 250px;
             background-color: #2c3e50;
@@ -26,45 +27,45 @@
             padding: 20px 0;
             overflow-y: auto;
         }
-        
+
         .logo {
             text-align: center;
             padding: 10px 0;
             margin-bottom: 20px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
-        
+
         .menu {
             list-style: none;
         }
-        
+
         .menu-item {
             padding: 15px 20px;
             cursor: pointer;
             transition: background-color 0.3s;
         }
-        
+
         .menu-item:hover {
             background-color: #34495e;
         }
-        
+
         .menu-item.active {
             background-color: #3498db;
         }
-        
+
         .content {
             flex: 1;
             padding: 20px;
             overflow-y: auto;
         }
-        
+
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
         }
-        
+
         .search-bar {
             display: flex;
             align-items: center;
@@ -74,14 +75,14 @@
             overflow: hidden;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        
+
         .search-bar input {
             flex: 1;
             padding: 10px;
             border: none;
             outline: none;
         }
-        
+
         .search-bar button {
             background: #3498db;
             border: none;
@@ -89,14 +90,14 @@
             padding: 10px 15px;
             cursor: pointer;
         }
-        
+
         .game-list {
             background: white;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
-        
+
         .game-list-header {
             display: grid;
             grid-template-columns: 50px 2fr 1fr 120px;
@@ -105,7 +106,7 @@
             font-weight: bold;
             border-bottom: 1px solid #e9ecef;
         }
-        
+
         .game-item {
             display: grid;
             grid-template-columns: 50px 2fr 1fr 120px;
@@ -113,19 +114,21 @@
             border-bottom: 1px solid #e9ecef;
             align-items: center;
         }
-        
+
         .game-item:hover {
             background-color: #f8f9fa;
         }
-        
+
         .game-item img {
             width: 40px;
             height: 40px;
             border-radius: 4px;
             object-fit: cover;
         }
-        
-        .approve-btn, .reject-btn, .code-btn {
+
+        .approve-btn,
+        .reject-btn,
+        .code-btn {
             padding: 6px 12px;
             border: none;
             border-radius: 4px;
@@ -133,28 +136,28 @@
             font-weight: 500;
             margin-right: 5px;
         }
-        
+
         .approve-btn {
             background-color: #2ecc71;
             color: white;
         }
-        
+
         .reject-btn {
             background-color: #e74c3c;
             color: white;
         }
-        
+
         .code-btn {
             background-color: #3ca8e7;
             color: white;
         }
-        
+
         .pagination {
             display: flex;
             justify-content: center;
             margin-top: 20px;
         }
-        
+
         .pagination button {
             padding: 8px 12px;
             margin: 0 5px;
@@ -163,7 +166,7 @@
             cursor: pointer;
             border-radius: 4px;
         }
-        
+
         .pagination button.active {
             background-color: #3498db;
             color: white;
@@ -171,120 +174,167 @@
         }
     </style>
 </head>
-<% const games = {python: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1200px-Python-logo-notext.svg.png",
- unity: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRMEpvhQOuCkjQFYaax3e8BMa9yk4Y6xt_HUQ&s",
-  blender: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT5iU8JDs-L1cYtWNuqQUSVDTi8upS3exaTzA&s",
-   website: "https://cdn-icons-png.flaticon.com/512/5339/5339181.png"}; %>
-<body>
-    <div class="sidebar">
-        <div class="logo">
-            <h2> Game Section </h2>
-        </div>
-        <ul class="menu">
-            <li class="menu-item active" onclick="filter('python')">python</li>
-            <li class="menu-item" onclick="filter('unity')">unity</li>
-            <li class="menu-item" onclick="filter('blender')">blender</li>
-            <li class="menu-item" onclick="filter('website')">website</li>
-        </ul>
-    </div>
-    
-    <div class="content">
-        <div class="header">
-            <h1> Approval Dashboard </h1>
-            <div class="search-bar">
-                <input type="text" placeholder="Search Name...">
-                <button onclick="joke()">Search</button>
+<% const
+    games={python: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1200px-Python-logo-notext.svg.png"
+    , unity: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRMEpvhQOuCkjQFYaax3e8BMa9yk4Y6xt_HUQ&s" ,
+    blender: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT5iU8JDs-L1cYtWNuqQUSVDTi8upS3exaTzA&s" ,
+    website: "https://cdn-icons-png.flaticon.com/512/5339/5339181.png" }; %>
+
+    <body>
+        <div class="sidebar">
+            <div class="logo">
+                <h2> Game Section </h2>
             </div>
+            <ul class="menu">
+                <li class="menu-item active" data-game="python">Python</li>
+                <li class="menu-item" data-game="unity">Unity</li>
+                <li class="menu-item" data-game="blender">Blender</li>
+                <li class="menu-item" data-game="website">Website</li>
+            </ul>
         </div>
-        
-        <div class="game-list">
-            <div class="game-list-header">
-                <div></div>
-                <div>Name</div>
-                <div>Stage Number</div>
-                <div>Actions</div>
-            </div>
-            <% data.forEach(item => { %>
-                <div class="game-item" data-game="<%= item.game %>">
-                    <img src="<%= games[item.game] %>" alt="Game 1">
-                    <div> <%= item.name %> </div>
-                    <span id="<%= item.name %> <%= item.stageId %>" style="display: none;"><%= item.code %></span>
-                    <div> <%= item.stageId %> </div>
-                    <div>
-                        <button class="approve-btn" onclick="approve('<%= item.username %>', '<%= item.game %>', '<%= item.type %>', '<%= item.stageId %>', '<%= item.rewardId %>', '<%= item.startTime %>', '<%= item.endTime %>', '<%= item.itemUseds %>')">Approve</button>
-                        <% if (item.code) { %><button class="code-btn" onclick="showCode('<%= item.username %>', '<%= item.stageId %>')">Code</button><% } %>
-                        <button class="reject-btn" onclick="joke()">Reject</button>
-                    </div>
+
+        <div class="content">
+            <div class="header">
+                <h1> Approval Dashboard </h1>
+                <div class="search-bar">
+                    <input id="search-text" type="text" placeholder="Search Name...">
+                    <button onclick="loadTable()">Search</button>
                 </div>
-            <% }) %>
+            </div>
+
+            <div class="game-list">
+                <div class="game-list-header">
+                    <div></div>
+                    <div>Name</div>
+                    <div>Stage Number</div>
+                    <div>Actions</div>
+                </div>
+                <% data.forEach(item=> { %>
+                    <div class="game-item" data-game="<%= item.game %>" id="<%= item.name %> <%= item.stageId %>">
+                        <img src="<%= games[item.game] %>" alt="Game Icon">
+                        <p id="username">
+                            <%= item.name %>
+                        </p>
+                        <span id="code" style="display: none;">
+                            <%= item.code %>
+                        </span>
+                        <p id="stage-id">
+                            <%= item.stageId %>
+                        </p>
+                        <div>
+                            <button class="approve-btn"
+                                onclick="approve('<%= item.username %>', '<%= item.game %>', '<%= item.type %>', '<%= item.stageId %>', '<%= item.rewardId %>', '<%= item.startTime %>', '<%= item.endTime %>', '<%= item.itemUseds %>')">Approve</button>
+                            <% if (item.code) { %><button class="code-btn"
+                                    onclick="showCode('<%= item.username %>', '<%= item.stageId %>')">Code</button>
+                                <% } %>
+                                    <button class="reject-btn" onclick="joke()">Reject</button>
+                        </div>
+                    </div>
+                    <% }) %>
+            </div>
         </div>
-    </div>
 
-    <script>
-        // Pass the games object from EJS to JavaScript
-        const gameImages = {
-            python: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1200px-Python-logo-notext.svg.png",
-            unity: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRMEpvhQOuCkjQFYaax3e8BMa9yk4Y6xt_HUQ&s",
-            blender: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT5iU8JDs-L1cYtWNuqQUSVDTi8upS3exaTzA&s",
-            website: "https://cdn-icons-png.flaticon.com/512/5339/5339181.png"
-        };
-        
-        // Simple JavaScript for demonstration
-        document.addEventListener('DOMContentLoaded', function() {
-            // Menu item click
-            const menuItems = document.querySelectorAll('.menu-item');
-            menuItems.forEach(item => {
-                item.addEventListener('click', function() {
-                    menuItems.forEach(i => i.classList.remove('active'));
-                    this.classList.add('active');
+        <script>
+            const gameImages = {
+                python: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1200px-Python-logo-notext.svg.png",
+                unity: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRMEpvhQOuCkjQFYaax3e8BMa9yk4Y6xt_HUQ&s",
+                blender: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT5iU8JDs-L1cYtWNuqQUSVDTi8upS3exaTzA&s",
+                website: "https://cdn-icons-png.flaticon.com/512/5339/5339181.png"
+            };
+
+            document.addEventListener('DOMContentLoaded', () => {
+                const menuItems = document.querySelectorAll(".menu-item");
+                const searchText = document.querySelector("#search-text");
+
+                const activeGame = localStorage.getItem("activeGame");
+
+                menuItems.forEach(menuItem => {
+                    const game = menuItem.getAttribute("data-game");
+
+                    menuItem.addEventListener('click', (e) => {
+                        menuItems.forEach(i => i.classList.remove('active'));
+                        e.target.classList.add('active');
+                        localStorage.setItem("activeGame", game);
+                        loadTable();
+                    });
+
+                    if (activeGame && activeGame == game) {
+                        menuItem.click();
+                    }
                 });
-            });
-        });
 
-        async function approve(username, game, type, stageId, rewardId, startTime, endTime, itemUseds) {
-            const code = document.getElementById(`${username} ${stageId}`)?.innerText;
-            await fetch("./approved", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ username, game, type, stageId, rewardId, startTime, endTime, itemUseds, code }),
-            });
-            location.reload();
-        }
 
-        function showCode(username, stageId) {
-            const code = document.getElementById(`${username} ${stageId}`)?.innerText;
-            if (code)
-                alert(code);
-        }
+                if (searchText) {
+                    searchText.addEventListener("input", (e) => {
+                        localStorage.setItem("searchText", e.target.value);
+                    });
 
-        function reject(username, game, type, stageId, rewardId, startTime, endTime, itemUseds) {
-            fetch("./rejected", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ username, stageId }),
-            });
-            location.reload();
-        }
-
-        function joke(){
-            alert("ไม่ได้ทำครับ");
-        }
-
-        function filter(game) {
-            // Using data attributes to filter
-            const allItems = document.querySelectorAll('.game-item');
-            allItems.forEach(item => {
-                if (item.getAttribute('data-game') === game) {
-                    item.style.display = 'grid';
-                } else {
-                    item.style.display = 'none';
+                    searchText.value = localStorage.getItem("searchText");
                 }
+
+                loadTable();
             });
-        }
-    </script>
-</body>
+
+            async function approve(username, game, type, stageId, rewardId, startTime, endTime, itemUseds) {
+                const code = document.querySelector(`#${username} ${stageId}`)?.querySelector("#code")?.innerText;
+                await fetch("./approved", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ username, game, type, stageId, rewardId, startTime, endTime, itemUseds, code }),
+                });
+                location.reload();
+            }
+
+            function showCode(username, stageId) {
+                const code = document.querySelector(`#${username} ${stageId}`)?.querySelector("#code")?.innerText;
+                if (code)
+                    alert(code);
+            }
+
+            function reject(username, game, type, stageId, rewardId, startTime, endTime, itemUseds) {
+                fetch("./rejected", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ username, stageId }),
+                });
+                location.reload();
+            }
+
+            function loadTable() {
+                const searchText = document.querySelector("#search-text");
+                const activeMenuItem = document.querySelector(".menu-item.active");
+
+                if (!searchText || !activeMenuItem)
+                    return;
+
+                const searchString = searchText.value;
+                const activeGame = activeMenuItem.getAttribute("data-game");
+
+                const gameItems = document.querySelectorAll(".game-item");
+
+                gameItems.forEach(gameItem => {
+                    const usernameElement = gameItem.querySelector("#username");
+
+                    if (usernameElement) {
+                        const username = usernameElement.innerText;
+
+                        if (username.includes(searchString) && gameItem.getAttribute("data-game") === activeGame) {
+                            gameItem.style.display = null;
+                        } else {
+                            gameItem.style.display = "none";
+                        }
+                    }
+                });
+            }
+
+            function joke() {
+                alert("ไม่ได้ทำครับ");
+            }
+        </script>
+    </body>
+
 </html>

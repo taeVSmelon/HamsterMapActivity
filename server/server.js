@@ -5,6 +5,8 @@ import http from "http";
 import querystring from "querystring";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import { fileURLToPath } from 'url';
+import path from 'path';
 import connectDB from "./db.js";
 import userModel from "./models/user.js";
 import approveModel from "./models/approve.js";
@@ -20,9 +22,13 @@ const stateCache = {};
 
 connectDB();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 app.use(express.json());
 app.set("trust proxy", true);
 app.set("view engine", "ejs");
+app.set('views', path.join(__dirname, './views'));
 
 app.use((req, res, next) => {
   const currentTime = new Date().toISOString();
