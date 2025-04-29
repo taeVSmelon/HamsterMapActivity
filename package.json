@@ -8,8 +8,7 @@
     "game": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "server": "nodemon server/server.js",
-  "start": "NODE_ENV=production node server/server.js"
+    "server": "nodemon server/server.js"
   },
   "dependencies": {
     "@discord/embedded-app-sdk": "^2.0.0",

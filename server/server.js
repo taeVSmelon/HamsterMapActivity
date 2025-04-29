@@ -18,7 +18,6 @@ dotenv.config({ path: "./.env" });
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.SERVER_PORT || 3000;
-const isProduction = process.env.NODE_ENV === "production";
 const stateCache = {};
 
 connectDB();
@@ -30,19 +29,6 @@ app.use(express.json());
 app.set("trust proxy", true);
 app.set("view engine", "ejs");
 app.set('views', path.join(__dirname, './views'));
-
-if (isProduction) {
-  const distPath = path.join(__dirname, "../dist");
-  app.use(express.static(distPath));
-
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
-  });
-} else {
-  app.get("*", (req, res) => {
-    res.send("Development mode — index.html is served via Vite.");
-  });
-}
 
 app.use((req, res, next) => {
   const currentTime = new Date().toISOString();
