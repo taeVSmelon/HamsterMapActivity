@@ -1,13 +1,13 @@
 import mongoose from "mongoose";
 import mongooseSequence from "mongoose-sequence";
 const AutoIncrement = mongooseSequence(mongoose);
-//const 
+
 const stageSchema = new mongoose.Schema({
     type: { type: String, required: true },
     stageId: { type: String, required: true },
     rewardId: { type: Number, required: true },
-    startTime: { type: Date, required: true },
-    endTime: { type: Date, required: true },
+    startTime: { type: Number, required: true },
+    endTime: { type: Number, required: true },
     itemUseds: { type: [String], default: [] },
     code: { type: String, default: null },
 });
@@ -37,18 +37,19 @@ const statSchema = new mongoose.Schema({
 });
 
 const dataSchema = new mongoose.Schema({
-  id : { type: Number, unique: true},
-  username: { type: String, required: true, unique: true },
-  password: { type: String, required: true , default : "1234554321"},
-  name : { type: String, required: true },
-  discordId : {type : String, default : ""},
-  friend: { type: [String] , default: []},
+  id : { type: Number, unique: true },
+  discordId : { type: Number, unique: true },
+  nickname: { type: String, required: true },
+  username : { type: String, required: true },
+  email : { type: String, default: null },
+  friends: { type: [String] , default: [] },
   stats: {type: statSchema, default: {} },
   score : { type: scoreSchema, default: {} },
-  refreshToken: { type: String, default: null }
+  refreshToken: { type: String, default: null },
+  // discordToken: { type: String, default: null }
 });
 
-dataSchema.plugin(AutoIncrement, { inc_field: 'id', start_seq: 1000 });
+dataSchema.plugin(AutoIncrement, { inc_field: 'id', start_seq: 1000000 });
 const dataModel = mongoose.model("UserData", dataSchema, "UserData");
 
 export default dataModel;

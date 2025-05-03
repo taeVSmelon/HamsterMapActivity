@@ -5,17 +5,15 @@ import RaidBoss from "./models/raid.js";
 import userModel from "./models/user.js";
 import { JWT_SECRET } from "./middlewares/authenticateToken.js";
 
-const usernameToWs = new Map();
+const discordIdToWs = new Map();
+const notifyClients = new Set();
+const raidClients = new Map(); // ws => username
 
 const setupWebsocket = (app, server) => {
   const wss = new WebSocketServer({ server });
   const WEBHOOK_SECRET = "hamsterHub";
 
   const raidBoss = new RaidBoss();
-
-  // WebSocket client groups
-  let notifyClients = new Set();
-  let raidClients = new Map(); // ws => username
 
   function broadcast(clients, payload) {
     const message = JSON.stringify(payload);
@@ -45,14 +43,12 @@ const setupWebsocket = (app, server) => {
         return ws.close(1008, "Unauthorized");
       }
 
-      console.log(`username: ${user.username}`);
+      const discordId = user.discordId;
 
-      const username = user.username;
-
-      if (event === "raid" && username) {
+      if (event === "raid" && discordId) {
         if (raidBoss.active) {
-          usernameToWs.set(username, ws);
-          raidClients.set(ws, username);
+          discordIdToWs.set(discordId, ws);
+          raidClients.set(ws, discordId);
           ws.send(
             JSON.stringify({
               e: "RS",
@@ -64,7 +60,7 @@ const setupWebsocket = (app, server) => {
           );
         } else ws.close();
       } else if (event === "notify") {
-        usernameToWs.set(username, ws);
+        discordIdToWs.set(discordId, ws);
         notifyClients.add(ws);
         if (raidBoss.active) {
           ws.send(
@@ -91,18 +87,18 @@ const setupWebsocket = (app, server) => {
           return;
         }
 
-        const { u: username, s: signal, d: damage } = data;
-        if (!raidBoss.active || !username || !signal) return;
+        const { id: discordId, u: username, s: signal, d: damage } = data;
+        if (!raidBoss.active || !discordId || !signal) return;
 
         switch (signal) {
           case "TD":
             if (typeof damage !== "number" || damage <= 0) return;
 
-            const updated = raidBoss.takeDamage(ws, username, damage);
+            const updated = raidBoss.takeDamage(ws, discordId, username, damage);
 
             if (updated) {
               console.log(
-                `${username} dealt ${damage} damage. Boss HP: ${raidBoss.health}`,
+                `${discordId} dealt ${damage} damage. Boss HP: ${raidBoss.health}`,
               );
               broadcast(raidClients.keys(), { e: "UBH", h: raidBoss.health });
             }
@@ -117,9 +113,10 @@ const setupWebsocket = (app, server) => {
                 .filter(([_, data]) => data.damage > 0)
                 .map(([_, data]) => data.ws);
               const sortedPlayers = Array.from(raidBoss.playerJoins.entries())
-                .map(([username, data]) => ({ username, damage: data.damage }))
+                .map(([discordId, data]) => ({ discordId, username: data.username, damage: data.damage }))
                 .sort((a, b) => b.damage - a.damage);
               const bestPlayer = {
+                discordId: sortedPlayers[0].discordId,
                 username: sortedPlayers[0].username,
                 damage: sortedPlayers[0].damage,
                 damagePercent: sortedPlayers[0].damage / bossMaxHealth * 100,
@@ -195,7 +192,7 @@ const setupWebsocket = (app, server) => {
     });
   });
 
-  app.post("/notify/start-raid", (req, res) => {
+  app.post("/notify/startRaid", (req, res) => {
     const {
       bossPrefabName,
       maxHealth,
@@ -234,7 +231,7 @@ const setupWebsocket = (app, server) => {
     return res.json({ success: true });
   });
 
-  app.post("/notify/stop-raid", (req, res) => {
+  app.post("/notify/stopRaid", (req, res) => {
     raidBoss.deactivate();
     broadcast(notifyClients, { e: "RE", w: false });
     broadcast(raidClients.keys(), { e: "RE", w: false });
@@ -249,9 +246,9 @@ const setupWebsocket = (app, server) => {
     return res.json({ sent: true });
   });
 
-  app.get("/notify/raid-status", (req, res) => {
+  app.get("/notify/raidStatus", (req, res) => {
     const sortedPlayers = Array.from(raidBoss.playerJoins.entries())
-      .map(([username, data]) => ({ username, damage: data.damage }))
+      .map(([discordId, data]) => ({ discordId, username: data.username, damage: data.damage }))
       .sort((a, b) => b.damage - a.damage);
 
     return res.json({
@@ -269,7 +266,7 @@ const setupWebsocket = (app, server) => {
 
   app.get("/raidManager", async (req, res) => {
     const sortedPlayers = Array.from(raidBoss.playerJoins.entries())
-      .map(([username, data]) => ({ username, damage: data.damage }))
+      .map(([discordId, data]) => ({ discordId, username: data.username, damage: data.damage }))
       .sort((a, b) => b.damage - a.damage);
 
     res.render("raid", {
@@ -288,8 +285,8 @@ const setupWebsocket = (app, server) => {
   });
 };
 
-function getWebSocketWithUsername(username) {
-  return usernameToWs.get(username);
+function getWebSocketWithDiscordId(discordId) {
+  return discordIdToWs.get(discordId);
 }
 
-export { setupWebsocket, getWebSocketWithUsername };
+export { setupWebsocket, getWebSocketWithDiscordId };

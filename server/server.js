@@ -1,16 +1,18 @@
 import express from "express";
-import axios from "axios";
 import WebSocket from "ws";
 import http from "http";
-import querystring from "querystring";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import path from 'path';
+import compression from 'compression';
+import expressStaticGzip from 'express-static-gzip';
 import connectDB from "./db.js";
 import userModel from "./models/user.js";
 import approveModel from "./models/approve.js";
-import { setupWebsocket, getWebSocketWithUsername } from "./websocket.js";
+import { setupWebsocket, getWebSocketWithDiscordId } from "./websocket.js";
+import createBotClient from "./bot.js";
 import { authenticateToken, JWT_SECRET, checkIsJson } from "./middlewares/authenticateToken.js";
 import errorHandler from "./middlewares/errorHandler.js";
 dotenv.config({ path: "./.env" });
@@ -18,17 +20,88 @@ dotenv.config({ path: "./.env" });
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.SERVER_PORT || 3000;
-const stateCache = {};
 
 connectDB();
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.dirname(path.dirname(__filename));
 
+app.use(compression());
 app.use(express.json());
 app.set("trust proxy", true);
+app.set("views", path.join(__dirname, "server/views"));
 app.set("view engine", "ejs");
-app.set('views', path.join(__dirname, './views'));
+
+app.use('/images', express.static(path.join(__dirname, "server/images")));
+
+app.use('/build', expressStaticGzip(path.join(__dirname, 'public/Build'), {
+  enableBrotli: true,
+  orderPreference: ['br', 'gz'],
+  setHeaders: (res, filePath) => {
+    res.setHeader('Content-Encoding', 'br');
+
+    if (filePath.endsWith('.wasm.br')) {
+      res.setHeader('Content-Type', 'application/wasm');
+    } else if (filePath.endsWith('.js.br')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    } else if (filePath.endsWith('.data.br')) {
+      res.setHeader('Content-Type', 'application/octet-stream');
+    }
+
+    if (filePath.endsWith('.br')) {
+      res.setHeader('Cache-Control', 'public, max-age=360, immutable');
+    }
+
+    try {
+      const stat = fs.statSync(filePath);
+      res.setHeader('Content-Length', stat.size);
+    } catch (e) {
+      console.warn('Cannot set Content-Length:', e);
+    }
+  }
+}));
+
+app.get('/assetBundle', (req, res) => {
+  try {
+    const bundleDir = path.join(__dirname, 'public/AssetBundle');
+    const files = fs.readdirSync(bundleDir).filter(file => fs.statSync(path.join(bundleDir, file)).isFile());
+    if (files.length === 0) {
+      return res.status(404).send('No asset bundle files found.');
+    }
+
+    const firstFile = files.sort()[0]; // เรียงตามชื่อและเลือกตัวแรก
+    const filePath = path.join(bundleDir, firstFile);
+
+    res.setHeader('Content-Type', 'application/octet-stream');
+    // res.setHeader('Cache-Control', 'public, max-age=3600, immutable');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.sendFile(filePath);
+  } catch (err) {
+    console.error('Error loading first bundle:', err);
+    res.status(500).send('Server error.');
+  }
+});
+
+app.get('/sceneBundle', (req, res) => {
+  try {
+    const bundleDir = path.join(__dirname, 'public/SceneBundle');
+    const files = fs.readdirSync(bundleDir).filter(file => fs.statSync(path.join(bundleDir, file)).isFile());
+    if (files.length === 0) {
+      return res.status(404).send('No scene bundle files found.');
+    }
+
+    const firstFile = files.sort()[0]; // เรียงตามชื่อและเลือกตัวแรก
+    const filePath = path.join(bundleDir, firstFile);
+
+    res.setHeader('Content-Type', 'application/octet-stream');
+    // res.setHeader('Cache-Control', 'public, max-age=3600, immutable');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.sendFile(filePath);
+  } catch (err) {
+    console.error('Error loading first bundle:', err);
+    res.status(500).send('Server error.');
+  }
+});
 
 app.use((req, res, next) => {
   const currentTime = new Date().toISOString();
@@ -43,7 +116,7 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-app.post("/discordToken", async (req, res) => {
+app.post("/discordToken", checkIsJson, async (req, res) => {
   const response = await fetch(`https://discord.com/api/oauth2/token`, {
     method: "POST",
     headers: {
@@ -59,25 +132,28 @@ app.post("/discordToken", async (req, res) => {
 
   const responseJson = await response.json();
 
-  console.log("responseJson:", responseJson);
-
   res.send(responseJson);
 });
 
-app.post("/loginDiscord", async (req, res) => {
-  const { discordId, discordAccessToken, discordRefreshToken } = req.body;
-  const user = await userModel.findOne({ discordId });
-  // console.log(user);
-  if (!user) return res.status(400).json({ message: "User not found" });
-  if (user.password !== pass) {
-    return res.status(400).json({ message: "Incorrect password" });
+app.post("/loginDiscord", checkIsJson, async (req, res) => {
+  const { discordId, nickname, username, email } = req.body;
+
+  let user = await userModel.findOne({ discordId });
+
+  if (!user) {
+    user = new userModel({
+      discordId: discordId,
+      nickname: nickname,
+      username: username
+    });
+    await user.save();
   }
 
-  const refreshToken = jwt.sign({ username: user.username, discordAccessToken, discordRefreshToken }, JWT_SECRET, {
+  const refreshToken = jwt.sign({ discordId: user.discordId }, JWT_SECRET, {
     expiresIn: "30d",
   });
   const accessToken = jwt.sign(
-    { username: user.username, discordAccessToken, discordRefreshToken, refreshToken: refreshToken },
+    { discordId: user.discordId, refreshToken: refreshToken },
     JWT_SECRET,
     { expiresIn: "1h" },
   );
@@ -96,54 +172,15 @@ app.post("/loginDiscord", async (req, res) => {
   );
 
   await userModel.updateOne(
-    { username: user.username },
-    { $set: { refreshToken: refreshToken } },
-  );
-
-  res.status(200).json({
-    message: "Login successful",
-    refreshToken,
-    accessToken,
-    refreshTokenExpired,
-    accessTokenExpired,
-  });
-});
-
-app.post("/login", async (req, res) => {
-  const username = req.body.username;
-  const password = req.body.password;
-  const user = await userModel.findOne({ username });
-  // console.log(user);
-  if (!user) return res.status(400).json({ message: "User not found" });
-  if (user.password !== password) {
-    return res.status(400).json({ message: "Incorrect password" });
-  }
-
-  const refreshToken = jwt.sign({ username: user.username }, JWT_SECRET, {
-    expiresIn: "30d",
-  });
-  const accessToken = jwt.sign(
-    { username: user.username, refreshToken: refreshToken },
-    JWT_SECRET,
-    { expiresIn: "1h" },
-  );
-
-  const refreshTokenExpiredTime = new Date();
-  refreshTokenExpiredTime.setDate(refreshTokenExpiredTime.getDate() + 1);
-
-  const accessTokenExpiredTime = new Date();
-  accessTokenExpiredTime.setHours(accessTokenExpiredTime.getHours() + 1);
-
-  const refreshTokenExpired = Math.floor(
-    refreshTokenExpiredTime.getTime() / 1000,
-  );
-  const accessTokenExpired = Math.floor(
-    accessTokenExpiredTime.getTime() / 1000,
-  );
-
-  await userModel.updateOne(
-    { username: user.username },
-    { $set: { refreshToken: refreshToken } },
+    { discordId: user.discordId },
+    {
+      $set: {
+        refreshToken: refreshToken,
+        nickname: nickname,
+        username: username,
+        email: email
+      }
+    },
   );
 
   res.status(200).json({
@@ -164,12 +201,12 @@ app.post("/refreshToken", async (req, res) => {
 
   jwt.verify(refreshToken, JWT_SECRET, async (err, user) => {
     if (err) return res.status(403).json({ error: "Token expired" });
-    const nowUser = await userModel.findOne({ username: user.username });
+    const nowUser = await userModel.findOne({ discordId: user.discordId });
     if (!nowUser) return res.status(404).json({ error: "User not found" });
 
     if (nowUser.refreshToken === refreshToken) {
       const accessToken = jwt.sign(
-        { username: nowUser.username, refreshToken: refreshToken },
+        { discordId: nowUser.discordId, refreshToken: refreshToken },
         JWT_SECRET,
         { expiresIn: "1h" },
       );
@@ -191,114 +228,39 @@ app.post("/refreshToken", async (req, res) => {
   });
 });
 
-app.get("/loginDiscord", async (req, res) => {
-  const code = req.query.code;
-  const state = req.query.state;
-  if (!code) {
-    return res.status(400).json({ message: "Authorization code not provided" });
-  }
-
-  try {
-    // Step 1: Exchange code for access token
-    const tokenResponse = await axios.post(
-      "https://discord.com/api/oauth2/token",
-      querystring.stringify({
-        client_id: process.env.CLIENT_ID,
-        client_secret: process.env.CLIENT_SECRET,
-        grant_type: "authorization_code",
-        code: code,
-        redirect_uri: process.env.REDIRECT_URI,
-        scope: "identify email guilds",
-      }),
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      },
-    );
-
-    const { access_token, refresh_token, token_type } = tokenResponse.data;
-
-    if (!access_token) {
-      return res.status(400).json({
-        message: "Failed to obtain access token",
-        error: tokenResponse.data,
-      });
-    }
-
-    // Step 2: Fetch user info from Discord
-    const userResponse = await axios.get("https://discord.com/api/users/@me", {
-      headers: {
-        Authorization: `${token_type} ${access_token}`,
-      },
-    });
-
-    const discordUser = userResponse.data;
-
-    if (!discordUser.id) {
-      return res.status(400).json({
-        message: "Failed to fetch user from Discord",
-        error: discordUser,
-      });
-    }
-
-    const user = await userModel.findOne({ discord_id: discordUser.id });
-    if (!user) {
-      return res.status(400).json({ message: "User not found" });
-    }
-    const token = jwt.sign(
-      {
-        username: user.username,
-        accessToken: access_token,
-        refreshToken: refresh_token,
-      },
-      JWT_SECRET,
-      {
-        expiresIn: "10h", // มาปรับได้
-      },
-    );
-    stateCache[state] = token;
-
-    return res.status(200).send("Login successful");
-  } catch (error) {
-    console.error(
-      "Error during Discord OAuth:",
-      error.response?.data || error.message,
-    );
-    return res.status(500).json({
-      message: "Internal server error",
-      error: error.response?.data || error.message,
-    });
-  }
-});
-
-app.get("/authorizeDiscord", async (req, res) => {
-  const state = req.query.state;
-  if (!state) return res.status(400).json({ message: "State not provided" });
-  if (!stateCache[state]) {
-    return res.status(400).json({ message: "State not found" });
-  }
-  res.status(200).json(stateCache[state]);
-  return delete stateCache[state];
-});
-
 app.get("/getProfile", authenticateToken, async (req, res) => {
-  const data = await userModel.findOne({ username: req.username });
-  if (!data) return res.status(400).json({ message: "User not found" });
-  res.status(200).json(data);
+  const user = await userModel.findOne({ discordId: req.discordId });
+
+  if (!user) return res.status(400).json({ message: "User not found" });
+
+  res.status(200).json({
+    discordId: user.discordId,
+    nickname: user.nickname,
+    username: user.username,
+    friends: user.friends,
+    stats: user.stats,
+  });
 });
 
-app.get("/getUser/:username", async (req, res) => {
-  const user = req.params.username;
-  const data = await userModel.findOne({ username: user });
-  if (!data) return res.status(400).json({ message: "User not found" });
-  res.status(200).json(data);
+app.get("/getUser/:discordId", async (req, res) => {
+  const { discordId } = req.params;
+
+  const user = await userModel.findOne({ discordId });
+
+  if (!user) return res.status(400).json({ message: "User not found" });
+
+  res.status(200).json({
+    discordId: user.discordId,
+    nickname: user.nickname,
+    username: user.username,
+    friends: user.friends,
+    stats: user.stats,
+  });
 });
 
 app.get("/leaderBoard/:game", async (req, res) => {
-  const game = req.params.game;
+  const { game } = req.params;
 
-  // Validate game parameter
   const validGames = ["python", "unity", "blender", "website"];
   if (!validGames.includes(game)) {
     return res.status(400).json({
@@ -309,37 +271,42 @@ app.get("/leaderBoard/:game", async (req, res) => {
 
   try {
     const sortQuery = {};
-    sortQuery[`score.${game}`] = -1; // -1 for descending order
+    sortQuery[`score.${game}`] = -1;
 
     const data = await userModel.find()
       .sort(sortQuery);
-    // console.log(data);
+
     if (!data || data.length === 0) {
       return res.status(404).json({ message: "No leaderboard data found" });
     }
-    var leaderboard = data.map((player) => {
+
+    var leaderboard = data.map((user) => {
       return {
-        id: player.id,
-        username: player.name,
-        score: player.score[game],
+        id: user.id,
+        discordId: user.discordId,
+        username: user.username,
+        score: user.score[game],
       };
     });
+
     res.status(200).json(leaderboard);
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
-app.post("/sendCode", authenticateToken, async (req, res) => {
+app.post("/sendCode", authenticateToken, checkIsJson, async (req, res) => {
   const { type, stageId, code, startTime, endTime, itemUseds, game } = req.body;
-  const username = req.username;
-  const user = await userModel.findOne({ username });
+  const discordId = req.discordId;
+
+  const user = await userModel.findOne({ discordId });
+
   try {
     const clearedStages = user.stats.clearedStages[game];
     const clearedStage = clearedStages.find((c) => c.stageId == stageId);
 
     if (!clearedStage) {
-      await userModel.findOneAndUpdate({ username }, {
+      await userModel.findOneAndUpdate({ discordId }, {
         $push: {
           [`stats.clearedStages.${game}`]: {
             type,
@@ -351,7 +318,8 @@ app.post("/sendCode", authenticateToken, async (req, res) => {
           },
         },
       }, { new: true });
-      await userModel.findOneAndUpdate({ username }, {
+
+      await userModel.findOneAndUpdate({ discordId }, {
         $inc: { [`score.${game}`]: 10 },
       }, { new: true });
     }
@@ -359,21 +327,28 @@ app.post("/sendCode", authenticateToken, async (req, res) => {
     console.log(err);
     return res.status(200).json({ error: err });
   }
+
   res.send("Successfully");
 });
 
 app.get("/getStage/:game", authenticateToken, async (req, res) => {
-  const game = req.params.game;
-  const data = await userModel.findOne({ username: req.username });
+  const { game } = req.params;
+
+  const data = await userModel.findOne({ discordId: req.discordId });
+
   if (!data) return res.status(400).json({ message: "User not found" });
-  const clearedStages = data.stats.clearedStages[game].map((stage) => {
-    return {
-      type: stage.type,
-      stageId: stage.stageId,
-      code: stage.code,
-      itemUseds: stage.itemUseds,
-    };
-  });
+
+  // const clearedStages = data.stats.clearedStages[game].map((stage) => {
+  //   return {
+  //     type: stage.type,
+  //     stageId: stage.stageId,
+  //     code: stage.code,
+  //     itemUseds: stage.itemUseds,
+  //   };
+  // });
+
+  const clearedStages = data.stats.clearedStages[game];
+
   res.status(200).json(clearedStages);
 });
 
@@ -383,22 +358,27 @@ app.get("/backoffice", async (req, res) => {
 
 app.get("/approveList", async (req, res) => {
   const data = await approveModel.find();
+
   res.render("approve", { data });
 });
 
-app.post("/addScore", async (req, res) => {
-  const { username, game, score } = req.body;
+app.post("/addScore", checkIsJson, async (req, res) => {
+  const { discordId, game, score } = req.body;
+
   try {
-    await userModel.findOneAndUpdate({ username }, {
+    await userModel.findOneAndUpdate({ discordId }, {
       $inc: { [`score.${game}`]: score },
     }, { new: true });
-    const ws = getWebSocketWithUsername(username);
+
+    const ws = getWebSocketWithDiscordId(discordId);
+
     if (ws != null && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
         e: "N",
         m: `Your ${game} score added ${score} points`,
         c: "#FFC90E",
       }));
+
       ws.send(JSON.stringify({
         e: "LS",
       }));
@@ -406,28 +386,32 @@ app.post("/addScore", async (req, res) => {
   } catch (err) {
     return res.status(200).json({ error: err });
   }
+
   res.json({ message: "Successfully" });
 });
 
-app.post("/generateId", async (req, res) => {
+app.post("/generateId", checkIsJson, async (req, res) => {
   const { username, name, password } = req.body;
+
   try {
     const user = new userModel({
       username,
       name,
       password,
     });
+
     await user.save();
   } catch (err) {
     return res.status(200).json({ error: err });
   }
+
   res.json({ message: "Successfully" });
 });
 
-app.post("/sendApprove", async (req, res) => {
+app.post("/sendApprove", checkIsJson, async (req, res) => {
   const {
-    username,
-    name,
+    nickname,
+    discordId,
     game,
     type,
     stageId,
@@ -436,10 +420,11 @@ app.post("/sendApprove", async (req, res) => {
     itemUseds,
     code,
   } = req.body;
+
   try {
     await approveModel.create({
-      username,
-      name,
+      nickname,
+      discordId,
       game,
       type,
       stageId,
@@ -452,14 +437,15 @@ app.post("/sendApprove", async (req, res) => {
     console.log(err);
     return res.status(200).json({ error: err });
   }
+
   res.json({ message: "Successfully" });
 });
 
-app.post("/approved", async (req, res) => {
-  const { username, game, type, stageId, startTime, endTime, itemUseds, code } =
-    req.body;
+app.post("/approved", checkIsJson, async (req, res) => {
+  const { discordId, game, type, stageId, startTime, endTime, itemUseds, code } = req.body;
+
   try {
-    await userModel.findOneAndUpdate({ username }, {
+    await userModel.findOneAndUpdate({ discordId }, {
       $push: {
         [`stats.clearedStages.${game}`]: {
           type,
@@ -472,8 +458,11 @@ app.post("/approved", async (req, res) => {
       },
       $inc: { [`score.${game}`]: 20 },
     }, { new: true });
-    await approveModel.findOneAndDelete({ username, stageId });
-    const ws = getWebSocketWithUsername(username);
+
+    await approveModel.findOneAndDelete({ discordId, stageId });
+
+    const ws = getWebSocketWithDiscordId(discordId);
+
     if (ws != null && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
         e: "LS",
@@ -483,26 +472,32 @@ app.post("/approved", async (req, res) => {
     console.error("Error in /approved:", err);
     return res.status(200).json({ error: err });
   }
+
   return res.json({ message: "Successfully" });
 });
 
-app.post("/rejected", async (req, res) => {
-  const { username, stageId } = req.body;
-  try {
-    await approveModel.findOneAndDelete({ username, stageId });
-    const ws = getWebSocketWithUsername(username);
-    if (ws != null && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        e: "LS",
-      }));
-    }
-  } catch (err) {
-    return res.status(200).json({ error: err });
-  }
-  res.json({ message: "Successfully" });
-});
+// app.post("/rejected", checkIsJson, async (req, res) => {
+//   const { discordId, stageId } = req.body;
+
+//   try {
+//     await approveModel.findOneAndDelete({ discordId, stageId });
+
+//     const ws = getWebSocketWithUsername(discordId);
+
+//     if (ws != null && ws.readyState === WebSocket.OPEN) {
+//       ws.send(JSON.stringify({
+//         e: "LS",
+//       }));
+//     }
+//   } catch (err) {
+//     return res.status(200).json({ error: err });
+//   }
+
+//   res.json({ message: "Successfully" });
+// });
 
 setupWebsocket(app, server);
+await createBotClient(app);
 
 app.use(errorHandler);
 

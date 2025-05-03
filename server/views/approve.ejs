@@ -174,11 +174,8 @@
         }
     </style>
 </head>
-<% const
-    games={python: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1200px-Python-logo-notext.svg.png"
-    , unity: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRMEpvhQOuCkjQFYaax3e8BMa9yk4Y6xt_HUQ&s" ,
-    blender: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT5iU8JDs-L1cYtWNuqQUSVDTi8upS3exaTzA&s" ,
-    website: "https://cdn-icons-png.flaticon.com/512/5339/5339181.png" }; %>
+<% const games={python: "./images/Python.png" , unity: "./images/Unity.png" , blender: "./images/Blender.png" ,
+    website: "./images/Website.png" }; %>
 
     <body>
         <div class="sidebar">
@@ -210,10 +207,11 @@
                     <div>Actions</div>
                 </div>
                 <% data.forEach(item=> { %>
-                    <div class="game-item" data-game="<%= item.game %>" id="<%= item.name %> <%= item.stageId %>">
+                    <div class="game-item" data-discord-id="<%= item.discordId %>" data-stage-id="<%= item.stageId %>"
+                        data-game="<%= item.game %>">
                         <img src="<%= games[item.game] %>" alt="Game Icon">
                         <p id="username">
-                            <%= item.name %>
+                            <%= item.nickname %>
                         </p>
                         <span id="code" style="display: none;">
                             <%= item.code %>
@@ -222,10 +220,15 @@
                             <%= item.stageId %>
                         </p>
                         <div>
-                            <button class="approve-btn"
-                                onclick="approve('<%= item.username %>', '<%= item.game %>', '<%= item.type %>', '<%= item.stageId %>', '<%= item.rewardId %>', '<%= item.startTime %>', '<%= item.endTime %>', '<%= item.itemUseds %>')">Approve</button>
+                            <button class="approve-btn" data-discord-id="<%= item.discordId %>"
+                                data-game="<%= item.game %>" data-type="<%= item.type %>"
+                                data-stage-id="<%= item.stageId %>" data-reward-id="<%= item.rewardId %>"
+                                data-start-time="<%= item.startTime %>" data-end-time="<%= item.endTime %>"
+                                data-item-useds="<%= item.itemUseds %>">
+                                Approve
+                            </button>
                             <% if (item.code) { %><button class="code-btn"
-                                    onclick="showCode('<%= item.username %>', '<%= item.stageId %>')">Code</button>
+                                    onclick="showCode('<%= item.discordId %>', '<%= item.stageId %>')">Code</button>
                                 <% } %>
                                     <button class="reject-btn" onclick="joke()">Reject</button>
                         </div>
@@ -236,10 +239,10 @@
 
         <script>
             const gameImages = {
-                python: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1200px-Python-logo-notext.svg.png",
-                unity: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRMEpvhQOuCkjQFYaax3e8BMa9yk4Y6xt_HUQ&s",
-                blender: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT5iU8JDs-L1cYtWNuqQUSVDTi8upS3exaTzA&s",
-                website: "https://cdn-icons-png.flaticon.com/512/5339/5339181.png"
+                python: "./images/Python.png",
+                unity: "./images/Unity.png",
+                blender: "./images/Blender.png",
+                website: "./images/Website.png"
             };
 
             document.addEventListener('DOMContentLoaded', () => {
@@ -275,20 +278,29 @@
                 loadTable();
             });
 
-            async function approve(username, game, type, stageId, rewardId, startTime, endTime, itemUseds) {
-                const code = document.querySelector(`#${username} ${stageId}`)?.querySelector("#code")?.innerText;
+            document.querySelectorAll(".approve-btn").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const d = btn.dataset;
+                    approve(d.discordId, d.game, d.type, d.stageId, d.rewardId, d.startTime, d.endTime, d.itemUseds);
+                });
+            });
+
+            async function approve(discordId, game, type, stageId, rewardId, startTime, endTime, itemUseds) {
+                const selector = `.game-item[data-discord-id="${discordId}"][data-stage-id="${stageId}"]`;
+                const code = document.querySelector(selector)?.querySelector("#code")?.innerText;
                 await fetch("./approved", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                     },
-                    body: JSON.stringify({ username, game, type, stageId, rewardId, startTime, endTime, itemUseds, code }),
+                    body: JSON.stringify({ discordId, game, type, stageId, rewardId, startTime, endTime, itemUseds, code }),
                 });
                 location.reload();
             }
 
-            function showCode(username, stageId) {
-                const code = document.querySelector(`#${username} ${stageId}`)?.querySelector("#code")?.innerText;
+            function showCode(discordId, stageId) {
+                const selector = `.game-item[data-discord-id="${discordId}"][data-stage-id="${stageId}"]`;
+                const code = document.querySelector(selector)?.querySelector("#code")?.innerText;
                 if (code)
                     alert(code);
             }

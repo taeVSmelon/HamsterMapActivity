@@ -1,13 +1,21 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + Vue</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vite + Vue</title>
+
+  <link rel="preload" href="/.proxy/api/build/HamsterMap.data.br" as="fetch" crossorigin="anonymous">
+  <link rel="preload" href="/.proxy/api/build/HamsterMap.framework.js.br" as="script">
+  <link rel="preload" href="/.proxy/api/build/HamsterMap.wasm.br" as="fetch" type="application/wasm" crossorigin="anonymous">
+
+</head>
+
+<body>
+  <div id="app"></div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+
 </html>

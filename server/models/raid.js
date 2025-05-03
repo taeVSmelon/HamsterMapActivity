@@ -22,17 +22,18 @@ class RaidBoss {
     this.updateHealthChange = Math.floor((this.health / this.maxHealth) * 100) /
       100;
     this.playerJoins =  new Map(
-      playerJoins.map(({ username, damage }) => [
-        username,
-        { damage, ws: null }
+      playerJoins.map(({ discordId, username, damage }) => [
+        discordId,
+        { username, damage, ws: null }
       ])
     );
   }
 
-  takeDamage(ws, username, damage) {
+  takeDamage(ws, discordId, username, damage) {
     this.health = Math.min(Math.max(0, this.health - damage), this.maxHealth);
-    const existing = this.playerJoins.get(username);
-    this.playerJoins.set(username, {
+    const existing = this.playerJoins.get(discordId);
+    this.playerJoins.set(discordId, {
+      username,
       ws,
       damage: existing ? existing.damage + damage : damage,
     });

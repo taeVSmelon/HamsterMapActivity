@@ -229,43 +229,20 @@
             <button class="mobile-menu-btn">☰ </button>
             
             <ul class="nav-links">
-                <li><a href="#" onclick="score()">Score</a></li>
-                <li><a href="#" onclick="Id()">Generate Id</a></li>
+                <li><a href="#" onclick="showScoreContainer()">Score</a></li>
             </ul>
         </div>
     </nav>
     
     <!-- Main Content -->
     <div class="main-content">
-        <div id="generateId" class="container">
-            <h2> Generate ID </h2>
-            
-            <form id="generateForm">
-                <div class="form-group">
-                    <label for="usernameId"> Username </label>
-                    <input id="usernameId" type="text" placeholder="Enter your username" required>
-                </div>
-                <div class="form-group">
-                    <label for="name"> Name </label>
-                    <input id="name" type="text" placeholder="Enter your name" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password"> Password </label>
-                    <input id="password" type="password" placeholder="Enter your password" required>
-                </div>
-                
-                <button type="submit"> Generate ID </button>
-            </form>
-        </div>
-        
         <div id="scoreContainer" class="container">
             <h2>Add Score</h2>
             
             <form id="scoreForm">
                 <div class="form-group">
-                    <label for="username">Username</label>
-                    <input id="username" type="text" placeholder="Enter your username" required>
+                    <label for="discordId">Discord Id</label>
+                    <input id="discordId" type="text" placeholder="Enter your discord id" required>
                 </div>
                 
                 <div class="form-group">
@@ -290,26 +267,28 @@
     </div>
     
     <script>
-        // Mobile menu toggle
-        document.querySelector('.mobile-menu-btn').addEventListener('click', function() {
+        const mobileMenuButton = document.querySelector('.mobile-menu-btn');
+        const scoreContainer = document.getElementById('scoreContainer');
+        const scoreForm = document.getElementById('scoreForm');
+
+        mobileMenuButton.addEventListener('click', function() {
             document.querySelector('.nav-links').classList.toggle('show');
         });
         
-        // Score form submission
-        document.getElementById('scoreForm').addEventListener('submit', function(e) {
+        scoreForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const username = document.getElementById('username').value;
+            const discordId = document.getElementById('discordId').value;
             const game = document.getElementById('game').value;
             const score = document.getElementById('score').value;
             
-            if (username && game && score) {
+            if (discordId && game && score) {
                 fetch('./addScore', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ username, game, score }),
+                    body: JSON.stringify({ discordId, game, score }),
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -326,50 +305,10 @@
                 });
             }
         });
-
-        document.getElementById('generateId').addEventListener('submit',async function(e) {
-            e.preventDefault();
-            const username = document.getElementById('usernameId').value;
-            const name = document.getElementById('name').value;
-            const password = document.getElementById('password').value;
-            
-            if (username && name && password) {
-                await fetch('./generateId', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ username, name, password }),
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log(data);
-                    if (data.message === 'Successfully') {
-                        alert('ID generated successfully');
-                    } else {
-                        alert('Failed to generate ID');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Failed to generate ID');
-                });
-            }
-        });
-    </script>
-    <script>
-        const genId = document.getElementById('generateId');
-        const addScore = document.getElementById('scoreContainer');
-        function score(){
-            genId.style.display = 'none';
-            addScore.style.display = 'block';
-        }
         
-        function Id(){
-            genId.style.display = 'block';
-            addScore.style.display = 'none';
+        function showScoreContainer() {
+            scoreContainer.style.display = null;
         }
-        
     </script>
 </body>
 </html>

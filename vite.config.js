@@ -8,9 +8,9 @@ export default defineConfig({
   envDir: './',
   plugins: [vue()],
   server: {
+    port: process.env.PUBLIC_PORT,
     allowedHosts: [
-      'decorating-spokesman-bookstore-consisting.trycloudflare.com',
-      'barry-reputation-presented-this.trycloudflare.com',
+      'nano-marshall-belongs-russia.trycloudflare.com',
       'localhost',  // ถ้ายังไม่เพิ่ม localhost
     ],
     proxy: {

@@ -5,13 +5,7 @@ import App from "./App.vue";
 const CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID;
 const discordSdk = new DiscordSDK(CLIENT_ID);
 
-setupDiscordSdk().then(async (auth) => {
-  window._requestBaseApi = `${CLIENT_ID}.discordsays.com/.proxy/api`;
-  // window._haveUser = false;
-  console.log("BaseApi:", window._requestBaseApi);
-});
-
-async function setupDiscordSdk() {
+const setupDiscordSdk = async () => {
   await discordSdk.ready();
 
   const { code } = await discordSdk.commands.authorize({
@@ -22,6 +16,8 @@ async function setupDiscordSdk() {
     scope: [
       "identify",
       "guilds",
+      "guilds.members.read",
+      "connections",
       "applications.commands",
     ],
   });
@@ -35,6 +31,7 @@ async function setupDiscordSdk() {
       code,
     }),
   });
+
   const { access_token } = await response.json();
 
   // Authenticate with Discord client (using the access_token)
@@ -49,19 +46,75 @@ async function setupDiscordSdk() {
   return auth;
 }
 
-// if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-//   const meta = document.createElement("meta")
-//   meta.name = "viewport";
-//   meta.content = "width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes";
-//   document.head.appendChild(meta);
+const getUser = async (accessToken) => {
+  const response = await fetch("https://discord.com/api/v10/users/@me", {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+    }
+  });
 
-//   const canvas = document.querySelector("#unity-canvas");
-//   canvas.style.width = "100%";
-//   canvas.style.height = "100%";
-//   canvas.style.position = "fixed";
+  if (response.ok)
+    return (await response.json());
+  else
+    return null;
+}
 
-//   document.body.style.textAlign = "left";
-// }
+const getHamsterHubData = async (userId) => {
+  const response = await fetch(`/.proxy/api/hamsterHub/user?userId=${encodeURIComponent(userId)}`, {
+    method: "GET",
+  });
 
+  if (response.ok)
+    return await response.json();
+  else
+    return null;
+}
+
+const loginDiscord = async (discordId, nickname, username, email) => {
+  const response = await fetch("/.proxy/api/loginDiscord", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      discordId,
+      nickname,
+      username,
+      email
+    }),
+  });
+
+  if (response.ok)
+    return await response.json();
+  else
+    return null;
+}
+
+
+setupDiscordSdk().then(async (auth) => {
+  if (auth) {
+    const accessToken = auth["access_token"];
+
+    window._requestBaseApi = `${CLIENT_ID}.discordsays.com/.proxy/api`;
+
+    try {
+      const { email } = await getUser(accessToken);
+      const { username, nickname, id } = await getHamsterHubData(auth.user.id);
+
+      // window._nickname = nickname;
+      // window._username = username;
+      // window._userId = id;
+      // window._email = email;
+
+      const loginData = await loginDiscord(id, nickname, username, email);
+      window._loginData = JSON.stringify(loginData);
+    } catch (err) {
+      console.error("Background user init failed:", err);
+    }
+  } else {
+    discordSdk.close(4001, "User not authorized");
+  }
+});
 
 createApp(App).mount("#app");

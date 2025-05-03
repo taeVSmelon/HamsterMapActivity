@@ -22,10 +22,15 @@ import VueUnity from 'unity-webgl/vue';
 import { onMounted, ref, reactive } from 'vue';
 
 const unityContext = new UnityWebgl({
-  loaderUrl: '/.proxy/Build/HamsterMap.loader.js',
-  dataUrl: '/.proxy/Build/HamsterMap.data',
-  frameworkUrl: '/.proxy/Build/HamsterMap.framework.js',
-  codeUrl: '/.proxy/Build/HamsterMap.wasm'
+  loaderUrl: '/.proxy/api/build/HamsterMap.loader.js',
+  dataUrl: '/.proxy/api/build/HamsterMap.data.br',
+  frameworkUrl: '/.proxy/api/build/HamsterMap.framework.js.br',
+  codeUrl: '/.proxy/api/build/HamsterMap.wasm.br',
+  streamingAssetsUrl: 'StreamingAssets',
+  companyName: 'HamsterHub',
+  productName: 'HamsterMap',
+  productVersion: '1.0',
+  crossOrigin: 'anonymous'
 });
 
 const unityRef = ref(null);
