@@ -19,6 +19,9 @@ const setupDiscordSdk = async () => {
       "guilds.members.read",
       "connections",
       "applications.commands",
+      // "rpc.activities.write",
+      // "activities.read",
+      // "activities.write"
     ],
   });
 
@@ -109,6 +112,39 @@ setupDiscordSdk().then(async (auth) => {
 
       const loginData = await loginDiscord(id, nickname, username, email);
       window._loginData = JSON.stringify(loginData);
+
+      // try {
+      //   const result = await discordSdk.commands.setActivity({
+      //     activity: {
+      //       details: "Playing HamsterHub 🐹",      // รายละเอียดกิจกรรม
+      //       state: "Battling other hamsters!",     // สถานะย่อย
+      //       timestamps: {
+      //         start: Date.now()                    // เวลาเริ่ม
+      //       },
+      //       assets: {
+      //         large_image: "embedded_background",        // ใช้ชื่อ key จาก Art Assets
+      //         large_text: "HamsterHub Arena",      // hover text บนรูปใหญ่
+      //         small_image: "logo",           // รูปเล็ก
+      //         small_text: "PvP Mode"               // hover text บนรูปเล็ก
+      //       },
+      //       buttons: [
+      //         // {
+      //         //   label: "Play Now",
+      //         //   url: "https://discord.com/activities/1359877612054249543"
+      //         // },
+      //         {
+      //           label: "Join Group",
+      //           url: "https://discord.gg/NmUSmxAUHc"
+      //         }
+      //       ]
+      //     },
+      //     // This marks it as an instance of gameplay (optional)
+      //     pid: process.pid
+      //   });
+      //   console.log("Set activity success:", result);
+      // } catch (e) {
+      //   console.error("Failed to set activity:", e);
+      // }
     } catch (err) {
       console.error("Background user init failed:", err);
     }

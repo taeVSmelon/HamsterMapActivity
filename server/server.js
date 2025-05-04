@@ -146,7 +146,17 @@ app.post("/loginDiscord", checkIsJson, async (req, res) => {
       nickname: nickname,
       username: username
     });
-    await user.save();
+    
+    try {
+      await user.save();
+    } catch (error) {
+      if (error.code === 11000) {
+        // ดักจับกรณีที่ record ถูกสร้างแล้วจาก request อื่นพร้อมกัน
+        user = await userModel.findOne({ discordId });
+      } else {
+        return res.status(500).json({ message: "Database error", error });
+      }
+    }
   }
 
   const refreshToken = jwt.sign({ discordId: user.discordId }, JWT_SECRET, {

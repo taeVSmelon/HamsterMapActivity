@@ -10,7 +10,7 @@ export default defineConfig({
   server: {
     port: process.env.PUBLIC_PORT,
     allowedHosts: [
-      'nano-marshall-belongs-russia.trycloudflare.com',
+      'yearly-parent-corpus-seriously.trycloudflare.com',
       'localhost',  // ถ้ายังไม่เพิ่ม localhost
     ],
     proxy: {
