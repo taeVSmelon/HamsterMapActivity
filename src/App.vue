@@ -45,6 +45,15 @@ onMounted(() => {
   document.documentElement.style.margin = '0';
   document.documentElement.style.padding = '0';
   document.documentElement.style.overflow = 'hidden';
+  
+  unityContext.on('OpenUrl', async (url) => {
+    try {
+      await discordSdk.commands.openExternalLink({ url });
+      console.log("Opened external link via Discord SDK:", url);
+    } catch (e) {
+      console.error("Failed to open external link:", e);
+    }
+  });
 
   unityContext.on('loaded', () => {
     // หากต้องการ fullscreen จริง (เช่น F11 หรือปุ่ม fullscreen) ใช้ setFullscreen
