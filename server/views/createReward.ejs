@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Create Reward</title>
+
+    <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="mb-4">Create Reward</h1>
+
+        <form id="item-form">
+            <h4>Main</h4>
+            <div class="alert alert-secondary">
+                <label for="exp">Exp Drop</label>
+                <input type="number" id="exp" name="exp" class="form-control" placeholder="100" required />
+            </div>
+            
+            <h4>Random Drop</h4>
+            <div class="alert alert-warning" id="results">
+                <div class="p-0 m-0 result-item">
+                    <label for="item">Item Result Id</label>
+                    <input type="number" class="form-control item" placeholder="100000" required />
+                    <br>
+                    <label for="count">Item Result Count</label>
+                    <input type="number" class="form-control count" min="1" placeholder="1" required />
+                    <br>
+                    <label for="rate">Item Result Rate</label>
+                    <input type="number" class="form-control rate" min="1" placeholder="1" required />
+                    <button type="button" class="btn btn-danger mt-3 delete-result-btn"
+                        onclick="deleteResultItem(this)">Delete</button>
+                    <hr class="border border-warning border-2">
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-primary me-3" onclick="addResultItem()">Add Result Item</button>
+            <button type="submit" class="btn btn-success">Create</button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById("item-form");
+        const resultItemParent = document.querySelector("#results");
+        const resultItemModel = document.querySelector("#results .result-item").cloneNode(true);
+
+        function addResultItem() {
+            const newResultItem = resultItemModel.cloneNode(true);
+
+            resultItemParent.appendChild(newResultItem);
+            reloadResultItems();
+        }
+
+        function deleteResultItem(element) {
+            const resultItems = document.querySelectorAll(".result-item");
+
+            if (resultItems.length > 1) {
+                element.parentElement.remove();
+                reloadResultItems();
+            }
+        }
+
+        function reloadResultItems() {
+            const resultItems = document.querySelectorAll(".result-item");
+
+            if (resultItems.length > 1) {
+                resultItems.forEach(resultItem => resultItem.querySelector(".delete-result-btn")?.classList?.remove("d-none"));
+            } else {
+                resultItems.forEach(resultItem => resultItem.querySelector(".delete-result-btn")?.classList?.add("d-none"));
+            }
+        }
+
+        reloadResultItems();
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const exp = formData.get("exp");
+
+            const itemDrops = new Set();
+
+            const resultItems = document.querySelectorAll(".result-item");
+
+            resultItems.forEach(resultItem => {
+                const itemId = resultItem.querySelector(".item");
+                const rate = resultItem.querySelector(".rate");
+                const count = resultItem.querySelector(".count");
+
+                if (itemId && rate && count) {
+                    itemDrops.add({
+                        itemId: itemId.value,
+                        rate: rate.value,
+                        count: count.value,
+                    });
+                }
+            });
+
+            const payload = {
+                exp,
+                itemDrops: Array.from(itemDrops)
+            };
+
+            const response = await fetch("./reward/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            alert(JSON.stringify(result, null, 2));
+        });
+    </script>
+
+    <script src="../bs-5/js/bootstrap.min.js"></script>
+</body>
+
+</html>

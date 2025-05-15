@@ -1,5 +1,4 @@
 import express from "express";
-import WebSocket from "ws";
 import http from "http";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
@@ -11,31 +10,53 @@ import expressStaticGzip from 'express-static-gzip';
 import connectDB from "./db.js";
 import userModel from "./models/user.js";
 import approveModel from "./models/approve.js";
-import { setupWebsocket, getWebSocketWithDiscordId } from "./websocket.js";
+import { setupWebsocket } from "./websocket.js";
 import createBotClient from "./bot.js";
 import { authenticateToken, JWT_SECRET, checkIsJson } from "./middlewares/authenticateToken.js";
 import errorHandler from "./middlewares/errorHandler.js";
+import worldModel from "./models/world.js";
+import { UserService } from "./services/userService.js";
+import leaderboardModel from "./models/leaderboard.js";
+import adminRouter from "./admin.js";
+import { removeHiddenKey, showRequestLog } from "./middlewares/requestEditor.js";
+import { InventoryService } from "./services/inventoryService.js";
+import fuseModel from "./models/Fuse.js";
+import { itemModel } from "./models/item.js";
+import WsUserData from "./classes/wsUserData.js";
+import { FixedItemId, FixedRewardService, loadAllFixedItem, RewardGroup } from "./services/fixedRewardService.js";
+import FixedReward from "./classes/fixedReward.js";
 dotenv.config({ path: "./.env" });
 
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.SERVER_PORT || 3000;
 
-connectDB();
+connectDB().then(loadAllFixedItem);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(path.dirname(__filename));
 
 app.use(compression());
-app.use(express.json());
+
+app.use(showRequestLog);
+app.use(removeHiddenKey);
+
+app.use(express.json({ limit: "256mb" }));
 app.set("trust proxy", true);
 app.set("views", path.join(__dirname, "server/views"));
 app.set("view engine", "ejs");
 
-app.use('/images', express.static(path.join(__dirname, "server/images")));
+app.use("/admin", adminRouter);
+
+app.use("/bs-5", express.static(path.join(__dirname, "server/bs-5"), { fallthrough: true }));
+
+app.use("/uploads", express.static(path.join(__dirname, "server/uploads"), { fallthrough: true }));
+
+app.use('/images', express.static(path.join(__dirname, "server/images"), { fallthrough: true }));
 
 app.use('/build', expressStaticGzip(path.join(__dirname, 'public/Build'), {
   enableBrotli: true,
+  fallthrough: true,
   orderPreference: ['br', 'gz'],
   setHeaders: (res, filePath) => {
     res.setHeader('Content-Encoding', 'br');
@@ -103,15 +124,6 @@ app.get('/sceneBundle', (req, res) => {
   }
 });
 
-app.use((req, res, next) => {
-  const currentTime = new Date().toISOString();
-  const method = req.method;
-  const path = req.originalUrl;
-  const ip = req.ip || req.socket.remoteAddress;
-  console.log(`${currentTime} - ${ip} - ${method} - ${path}`);
-  next();
-});
-
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
@@ -136,34 +148,30 @@ app.post("/discordToken", checkIsJson, async (req, res) => {
 });
 
 app.post("/loginDiscord", checkIsJson, async (req, res) => {
-  const { discordId, nickname, username, email } = req.body;
+  const { userId, nickname, username, email } = req.body;
 
-  let user = await userModel.findOne({ discordId });
+  const user = await userModel.findOne({ id: userId }).lean();
 
   if (!user) {
-    user = new userModel({
-      discordId: discordId,
-      nickname: nickname,
-      username: username
-    });
-    
     try {
-      await user.save();
+      await userModel.create({
+        id: userId,
+        nickname,
+        username
+      });
     } catch (error) {
-      if (error.code === 11000) {
-        // ดักจับกรณีที่ record ถูกสร้างแล้วจาก request อื่นพร้อมกัน
-        user = await userModel.findOne({ discordId });
-      } else {
+      console.error("User creation failed:", error);
+      if (error.code !== 11000) {
         return res.status(500).json({ message: "Database error", error });
       }
     }
   }
 
-  const refreshToken = jwt.sign({ discordId: user.discordId }, JWT_SECRET, {
+  const refreshToken = jwt.sign({ userId }, JWT_SECRET, {
     expiresIn: "30d",
   });
   const accessToken = jwt.sign(
-    { discordId: user.discordId, refreshToken: refreshToken },
+    { userId, refreshToken: refreshToken },
     JWT_SECRET,
     { expiresIn: "1h" },
   );
@@ -182,7 +190,7 @@ app.post("/loginDiscord", checkIsJson, async (req, res) => {
   );
 
   await userModel.updateOne(
-    { discordId: user.discordId },
+    { id: userId },
     {
       $set: {
         refreshToken: refreshToken,
@@ -193,7 +201,7 @@ app.post("/loginDiscord", checkIsJson, async (req, res) => {
     },
   );
 
-  res.status(200).json({
+  return res.status(200).json({
     message: "Login successful",
     refreshToken,
     accessToken,
@@ -211,12 +219,12 @@ app.post("/refreshToken", async (req, res) => {
 
   jwt.verify(refreshToken, JWT_SECRET, async (err, user) => {
     if (err) return res.status(403).json({ error: "Token expired" });
-    const nowUser = await userModel.findOne({ discordId: user.discordId });
+    const nowUser = await userModel.findOne({ id: user.userId }).lean();
     if (!nowUser) return res.status(404).json({ error: "User not found" });
 
     if (nowUser.refreshToken === refreshToken) {
       const accessToken = jwt.sign(
-        { discordId: nowUser.discordId, refreshToken: refreshToken },
+        { id: nowUser.userId, refreshToken: refreshToken },
         JWT_SECRET,
         { expiresIn: "1h" },
       );
@@ -238,13 +246,24 @@ app.post("/refreshToken", async (req, res) => {
   });
 });
 
-app.get("/getProfile", authenticateToken, async (req, res) => {
-  const user = await userModel.findOne({ discordId: req.discordId });
+app.get("/profile", authenticateToken, async (req, res) => {
+  const user = await userModel
+    .findOne({ id: req.userId })
+    .populate([
+      "stats.equipment.weapon1",
+      "stats.equipment.weapon2",
+      "stats.equipment.weapon3",
+      "stats.equipment.core",
+      "stats.inventory.item",
+      "stats.clearedStages.rewardCollected.item",
+      "stats.approvingStages"
+    ])
+    .lean();
 
   if (!user) return res.status(400).json({ message: "User not found" });
 
   res.status(200).json({
-    discordId: user.discordId,
+    id: user.id,
     nickname: user.nickname,
     username: user.username,
     friends: user.friends,
@@ -252,15 +271,26 @@ app.get("/getProfile", authenticateToken, async (req, res) => {
   });
 });
 
-app.get("/getUser/:discordId", async (req, res) => {
-  const { discordId } = req.params;
+app.get("/users/:userId", async (req, res) => {
+  const { userId } = req.params;
 
-  const user = await userModel.findOne({ discordId });
+  const user = await userModel
+    .findOne({ id: userId })
+    .populate([
+      "stats.equipment.weapon1",
+      "stats.equipment.weapon2",
+      "stats.equipment.weapon3",
+      "stats.equipment.core",
+      "stats.inventory.item",
+      "stats.clearedStages.rewardCollected.item",
+      "stats.approvingStages"
+    ])
+    .lean();
 
   if (!user) return res.status(400).json({ message: "User not found" });
 
   res.status(200).json({
-    discordId: user.discordId,
+    id: user.id,
     nickname: user.nickname,
     username: user.username,
     friends: user.friends,
@@ -268,181 +298,120 @@ app.get("/getUser/:discordId", async (req, res) => {
   });
 });
 
-app.get("/leaderBoard/:game", async (req, res) => {
-  const { game } = req.params;
+app.get("/leaderboard/:leaderboardId", async (req, res) => {
+  const { leaderboardId } = req.params;
 
-  const validGames = ["python", "unity", "blender", "website"];
-  if (!validGames.includes(game)) {
-    return res.status(400).json({
-      message:
-        "Invalid game type. Must be one of: python, unity, blender, website",
-    });
-  }
+  const leaderboard = await leaderboardModel.findOne({ id: leaderboardId }).lean();
 
-  try {
-    const sortQuery = {};
-    sortQuery[`score.${game}`] = -1;
+  if (!leaderboard) return res.status(404).json({ message: "Leaderboard not found" })
 
-    const data = await userModel.find()
-      .sort(sortQuery);
+  return res.status(200).json({
+    name: leaderboard.name,
+    userScores: leaderboard.userScores
+  });
+});
 
-    if (!data || data.length === 0) {
-      return res.status(404).json({ message: "No leaderboard data found" });
-    }
+app.get("/getWorlds", authenticateToken, async (req, res) => {
+  const user = await userModel.findOne({ id: req.userId }).lean();
 
-    var leaderboard = data.map((user) => {
+  if (!user) return res.status(400).json({ message: "User not found" });
+
+  const worlds = await worldModel.find({ whitelists: { $in: [req.userId] } }).lean();
+
+  res.status(200).json({
+    worlds: worlds.map(world => {
       return {
-        id: user.id,
-        discordId: user.discordId,
-        username: user.username,
-        score: user.score[game],
+        id: world.id,
+        name: world.worldName
       };
-    });
+    })
+  });
+});
 
-    res.status(200).json(leaderboard);
-  } catch (error) {
-    res.status(500).json({ message: "Internal server error" });
+app.get("/getStages/:worldId", authenticateToken, async (req, res) => {
+  const { worldId } = req.params;
+
+  const world = await worldModel
+    .findOne({ id: worldId })
+    .populate("stages")
+    .lean();
+
+  if (!world) return res.status(400).json({ message: "World not found" });
+
+  const user = await userModel.findOne({ id: req.userId }).lean();
+
+  if (!user) return res.status(400).json({ message: "User not found" });
+
+  const clearedStages = user.stats.clearedStages;
+
+  res.status(200).json({
+    stages: world.stages,
+    clearedStages: clearedStages
+  });
+});
+
+// app.get("/backoffice", async (req, res) => {
+//   res.render("backoffice");
+// });
+
+// app.get("/approveList", async (req, res) => {
+//   const data = await approveModel.find();
+
+//   res.render("approve", { data });
+// });
+
+app.get("/rewardCollected/:rewardCollectedId", authenticateToken, checkIsJson, async (req, res) => {
+  const { rewardCollectedId } = req.params;
+  const userId = req.userId;
+
+  const user = await userModel
+    .findOne({ id: userId })
+    .populate("stats.clearedStages.reward.item")
+    .lean();
+
+  if (!user) return res.status(400).json({ message: "User not found" });
+
+  const rewardCollected = user.stats.clearedStages.find(cs => cs.reward.id == rewardCollectedId);
+
+  res.json({ rewardCollected });
+});
+
+app.post("/sendStage", authenticateToken, checkIsJson, async (req, res) => {
+  const { stageId, startTime, endTime, itemUseds, message } = req.body;
+  const userId = req.userId;
+
+  const rewardCollected = await UserService.clearStage(userId, stageId, startTime, endTime, itemUseds, message);
+
+  if (rewardCollected.rewardId) {
+    res.json({ rewardCollected });
+  } else {
+    res.json({ rewardCollected: null });
   }
 });
 
-app.post("/sendCode", authenticateToken, checkIsJson, async (req, res) => {
-  const { type, stageId, code, startTime, endTime, itemUseds, game } = req.body;
-  const discordId = req.discordId;
+app.post("/sendApprove", authenticateToken, checkIsJson, async (req, res) => {
+  const { stageId, startTime, endTime, itemUseds, message } = req.body;
+  const userId = req.userId;
 
-  const user = await userModel.findOne({ discordId });
+  const user = await userModel.findOne({ id: req.userId });
 
-  try {
-    const clearedStages = user.stats.clearedStages[game];
-    const clearedStage = clearedStages.find((c) => c.stageId == stageId);
-
-    if (!clearedStage) {
-      await userModel.findOneAndUpdate({ discordId }, {
-        $push: {
-          [`stats.clearedStages.${game}`]: {
-            type,
-            stageId,
-            code,
-            startTime,
-            endTime,
-            itemUseds,
-          },
-        },
-      }, { new: true });
-
-      await userModel.findOneAndUpdate({ discordId }, {
-        $inc: { [`score.${game}`]: 10 },
-      }, { new: true });
-    }
-  } catch (err) {
-    console.log(err);
-    return res.status(200).json({ error: err });
-  }
-
-  res.send("Successfully");
-});
-
-app.get("/getStage/:game", authenticateToken, async (req, res) => {
-  const { game } = req.params;
-
-  const data = await userModel.findOne({ discordId: req.discordId });
-
-  if (!data) return res.status(400).json({ message: "User not found" });
-
-  // const clearedStages = data.stats.clearedStages[game].map((stage) => {
-  //   return {
-  //     type: stage.type,
-  //     stageId: stage.stageId,
-  //     code: stage.code,
-  //     itemUseds: stage.itemUseds,
-  //   };
-  // });
-
-  const clearedStages = data.stats.clearedStages[game];
-
-  res.status(200).json(clearedStages);
-});
-
-app.get("/backoffice", async (req, res) => {
-  res.render("backoffice");
-});
-
-app.get("/approveList", async (req, res) => {
-  const data = await approveModel.find();
-
-  res.render("approve", { data });
-});
-
-app.post("/addScore", checkIsJson, async (req, res) => {
-  const { discordId, game, score } = req.body;
+  if (!user) return res.status(400).json({ message: "User not found" });
 
   try {
-    await userModel.findOneAndUpdate({ discordId }, {
-      $inc: { [`score.${game}`]: score },
-    }, { new: true });
-
-    const ws = getWebSocketWithDiscordId(discordId);
-
-    if (ws != null && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        e: "N",
-        m: `Your ${game} score added ${score} points`,
-        c: "#FFC90E",
-      }));
-
-      ws.send(JSON.stringify({
-        e: "LS",
-      }));
-    }
-  } catch (err) {
-    return res.status(200).json({ error: err });
-  }
-
-  res.json({ message: "Successfully" });
-});
-
-app.post("/generateId", checkIsJson, async (req, res) => {
-  const { username, name, password } = req.body;
-
-  try {
-    const user = new userModel({
-      username,
-      name,
-      password,
-    });
-
-    await user.save();
-  } catch (err) {
-    return res.status(200).json({ error: err });
-  }
-
-  res.json({ message: "Successfully" });
-});
-
-app.post("/sendApprove", checkIsJson, async (req, res) => {
-  const {
-    nickname,
-    discordId,
-    game,
-    type,
-    stageId,
-    startTime,
-    endTime,
-    itemUseds,
-    code,
-  } = req.body;
-
-  try {
-    await approveModel.create({
-      nickname,
-      discordId,
-      game,
-      type,
+    const approve = await approveModel.create({
+      nickname: user.nickname,
+      userId,
       stageId,
       startTime,
       endTime,
       itemUseds,
-      code,
+      message,
     });
+
+    await userModel.updateOne(
+      { id: userId },
+      { $push: { "stats.approvingStages": approve._id } }
+    );
   } catch (err) {
     console.log(err);
     return res.status(200).json({ error: err });
@@ -450,63 +419,233 @@ app.post("/sendApprove", checkIsJson, async (req, res) => {
 
   res.json({ message: "Successfully" });
 });
+``
+app.put(
+  "/equipment/update",
+  authenticateToken,
+  checkIsJson,
+  async (req, res) => {
+    const { equipmentData } = req.body;
 
-app.post("/approved", checkIsJson, async (req, res) => {
-  const { discordId, game, type, stageId, startTime, endTime, itemUseds, code } = req.body;
+    if (!equipmentData) return res.status(400).json({ error: "JSON not match" });
 
-  try {
-    await userModel.findOneAndUpdate({ discordId }, {
-      $push: {
-        [`stats.clearedStages.${game}`]: {
-          type,
-          stageId,
-          code,
-          startTime,
-          endTime,
-          itemUseds,
-        },
-      },
-      $inc: { [`score.${game}`]: 20 },
-    }, { new: true });
+    const user = await userModel.findOne({ id: req.userId }).lean();
 
-    await approveModel.findOneAndDelete({ discordId, stageId });
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-    const ws = getWebSocketWithDiscordId(discordId);
+    const equipment = user.stats.equipment;
 
-    if (ws != null && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        e: "LS",
-      }));
+    let removedItems = {};
+    let addedItems = {};
+
+    for (const key of Object.keys(equipmentData)) {
+      const newItem = await itemModel.findOne({ id: equipmentData[key] }).lean();
+
+      const newItemId = newItem?._id;
+      const oldItemId = equipment[key];
+
+      const oldIdStr = oldItemId ? oldItemId.toString() : null;
+      const newIdStr = newItemId ? newItemId.toString() : null;
+
+      if (newIdStr !== oldIdStr && newIdStr !== undefined) {
+        if (oldIdStr) removedItems[key] = oldIdStr;
+        if (newIdStr) addedItems[key] = newIdStr;
+      }
     }
-  } catch (err) {
-    console.error("Error in /approved:", err);
-    return res.status(200).json({ error: err });
+
+    for (const key in addedItems) {
+      const item = await itemModel.findById(addedItems[key]).lean();
+
+      if (!item) {
+        return res.status(400).json({
+          error: `Item ${addedItems[key]} not found`,
+        });
+      }
+
+      if (key.startsWith("weapon") && item.type !== "VoidItem") {
+        return res.status(400).json({
+          error: `Item ${addedItems[key]} must be a VoidItem`,
+        });
+      }
+
+      if (key === "core" && item.type !== "CoreItem") {
+        return res.status(400).json({
+          error: `Item ${addedItems[key]} must be a CoreItem`,
+        });
+      }
+    }
+
+    let updatedUser = null;
+
+    for (const key in removedItems) {
+      await userModel.updateOne(
+        { id: req.userId },
+        { $set: { [`stats.equipment.${key}`]: null } },
+      );
+
+      const item = await itemModel.findById(removedItems[key]).lean();
+
+      updatedUser = await InventoryService.addItem(req.userId, item._id);
+    }
+
+    for (const key in addedItems) {
+      const addedItem = await itemModel.findById(addedItems[key]).lean();
+
+      if (addedItem) {
+        await userModel.updateOne(
+          { id: req.userId },
+          { $set: { [`stats.equipment.${key}`]: addedItem._id } },
+        );
+
+        updatedUser = await InventoryService.removeItem(
+          req.userId,
+          addedItem._id,
+        );
+      }
+    }
+
+    if (updatedUser === null) {
+      updatedUser = await userModel
+        .findOne({ id: req.userId })
+        .populate([
+          "stats.equipment.weapon1",
+          "stats.equipment.weapon2",
+          "stats.equipment.weapon3",
+          "stats.equipment.core",
+          "stats.inventory.item"
+        ])
+        .lean();
+    }
+
+    return res.json({
+      equipment: updatedUser.stats.equipment,
+      inventory: updatedUser.stats.inventory,
+    });
+  },
+);
+
+app.post(
+  "/item/fuse",
+  authenticateToken,
+  checkIsJson,
+  async (req, res) => {
+    const { item1: itemId1, item2: itemId2 } = req.body;
+
+    if (!itemId1) {
+      return res.status(400).json({ error: "Json don't have item1 id" });
+    } else if (!itemId2) {
+      return res.status(400).json({ error: "Json don't have item2 id" });
+    }
+
+    const user = await userModel
+      .findOne({ id: req.userId })
+      .populate("stats.inventory.item")
+      .lean();
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const inventory = user.stats.inventory;
+
+    const item1 = inventory.find((i) =>
+      i.item.id.toString() === itemId1
+    );
+    const item2 = inventory.find((i) =>
+      i.item.id.toString() === itemId2
+    );
+
+    if (!item1 || !item2) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+
+    const fuse = await fuseModel.findOne({
+      $or: [
+        { item1: itemId1, item2: itemId2 },
+        { item1: itemId2, item2: itemId1 },
+      ],
+    }).lean();
+
+    if (!fuse) {
+      return res.status(404).json({ error: "Can't find fuse result" });
+    }
+
+    const allRate = fuse.results.map((item) => item.rate).reduce(
+      (sum, rate) => sum + rate,
+      0,
+    );
+
+    if (allRate <= 0) {
+      return res.status(404).json({ error: "Can't find item result" });
+    }
+
+    let rateRandom = Math.floor(Math.random() * allRate) + 1;
+    let itemResultId = null;
+
+    for (const item of fuse.results) {
+      rateRandom -= item.rate;
+      if (rateRandom <= 0) {
+        itemResultId = item.itemId;
+        break;
+      }
+    }
+
+    const itemResult = await itemModel.findOne({ id: itemResultId }).lean();
+    if (!itemResult) {
+      return res.status(404).json({ error: "Can't find item result" });
+    }
+
+    await InventoryService.removeItem(req.userId, item1._id);
+    await InventoryService.removeItem(req.userId, item2._id);
+    await InventoryService.addItem(req.userId, itemResult._id);
+
+    const updatedUser = await userModel
+      .findOne({ id: req.userId })
+      .populate("stats.inventory.item")
+      .lean();
+
+    return res.json({
+      resultItem: itemResult,
+      inventory: updatedUser.stats.inventory,
+    });
+  },
+);
+
+app.get("/afk/check", authenticateToken, async (req, res) => {
+  const wsUserData = WsUserData.getDataByUserId(req.userId);
+
+  if (wsUserData) {
+    const rewardData = await wsUserData.checkReward();
+
+    if (rewardData)
+      return res.status(200).json({ rewardData, afkRewardTime: wsUserData.afkRewardTime });
+    else
+      return res.status(200).json({ message: "Wait", afkRewardTime: wsUserData.afkRewardTime });
   }
 
-  return res.json({ message: "Successfully" });
+  return res.status(404).json({ message: "Can't find user websocket" });
 });
 
-// app.post("/rejected", checkIsJson, async (req, res) => {
-//   const { discordId, stageId } = req.body;
+app.post("/gacha/roll", authenticateToken, async (req, res) => {
+  const user = await userModel.findOne({ id: req.userId }).lean();
 
-//   try {
-//     await approveModel.findOneAndDelete({ discordId, stageId });
+  if (!user) return res.status(404).json({ error: "User not found" });
 
-//     const ws = getWebSocketWithUsername(discordId);
+  const item = await FixedReward.getItemObject(FixedItemId.GACHA_TICKET);
 
-//     if (ws != null && ws.readyState === WebSocket.OPEN) {
-//       ws.send(JSON.stringify({
-//         e: "LS",
-//       }));
-//     }
-//   } catch (err) {
-//     return res.status(200).json({ error: err });
-//   }
+  if (!item) return res.status(404).json({ error: "Item not found" });
 
-//   res.json({ message: "Successfully" });
-// });
+  await InventoryService.removeItem(req.userId, item._id);
+  const data = await FixedRewardService.rollReward(req.userId, RewardGroup.GACHA);
 
-setupWebsocket(app, server);
+  return res.status(200).json(data);
+});
+
+app.get("/gacha/images", authenticateToken, async (req, res) => {
+  const imagePaths = await FixedReward.getItemImages(RewardGroup.GACHA);
+
+  return res.status(200).json({ imagePaths });
+});
+
+setupWebsocket(adminRouter, server);
 await createBotClient(app);
 
 app.use(errorHandler);

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Item List</title>
+
+    <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        img#icon {
+            max-width: 300px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+      <h1 class="mb-4">World List</h1>
+  
+      <% data.forEach(world => { %>
+        <div class="row alert alert-light align-items-center mb-4 p-4">
+            <p class="col p-0 m-0 col-3"><%= world.id %></p>
+            <p class="col p-0 m-0 col-4"><%= world.worldName %></p>
+            <p class="col p-0 m-0 col-5">Whitelists <%= world.whitelists.length %> User</p>
+        </div>
+      <% }); %>
+      <!-- ปุ่มแสดงข้อมูลเพิ่มเติม -->
+      <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#asd" aria-expanded="false" aria-controls="moreInfo">
+        Show More Info
+      </button>
+  
+      <!-- ส่วนที่ถูกขยาย -->
+      <div class="collapse mt-3" id="asd">
+        <div class="card card-body">
+          <h5>More Details</h5>
+          <p>This section contains additional information that becomes visible after clicking the button.</p>
+  
+          <!-- ปุ่มย่อข้อมูล -->
+          <button class="btn btn-secondary mt-2" type="button" data-bs-toggle="collapse" data-bs-target="#asd">
+            Hide Info
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="../bs-5/js/bootstrap.min.js"></script>
+</body>
+
+</html>

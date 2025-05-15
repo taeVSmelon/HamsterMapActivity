@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Approval System</title>
+    <!-- <meta http-equiv="refresh" content="60"> -->
+
+    <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            display: flex;
+            min-height: 100vh;
+            background-color: #f5f5f5;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px 0;
+            overflow-y: auto;
+        }
+
+        .logo {
+            text-align: center;
+            padding: 10px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #menu {
+            list-style: none;
+        }
+
+        .menu-item {
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .menu-item:hover {
+            background-color: #34495e;
+        }
+
+        .menu-item.active {
+            background-color: #3498db;
+        }
+
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .search-bar {
+            display: flex;
+            align-items: center;
+            width: 300px;
+            background: white;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-bar input {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            outline: none;
+        }
+
+        .search-bar button {
+            background: #3498db;
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            cursor: pointer;
+        }
+
+        .approve-list {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .approve-list-header {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .approve-item {
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .approve-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .approve-item img {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            object-fit: cover;
+        }
+
+        .approve-btn,
+        .reject-btn,
+        .message-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            margin-right: 5px;
+        }
+
+        .approve-btn {
+            background-color: #2ecc71;
+            color: white;
+        }
+
+        .reject-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .message-btn {
+            background-color: #3ca8e7;
+            color: white;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .pagination button {
+            padding: 8px 12px;
+            margin: 0 5px;
+            border: 1px solid #ddd;
+            background-color: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .pagination button.active {
+            background-color: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <h2>World Section</h2>
+        </div>
+        <ul id="menu">
+
+        </ul>
+    </div>
+
+    <div class="content">
+        <div class="header">
+            <h1> Approval Dashboard </h1>
+            <div class="search-bar">
+                <input id="search-text" type="text" placeholder="Search Name...">
+                <button id="search-btn">Search</button>
+            </div>
+        </div>
+
+        <div class="approve-list">
+            <div class="row px-5 py-3 fw-bold fs-4">
+                <div></div>
+                <div class="col col-3 p-0 m-0 align-self-center">Name</div>
+                <div class="col col-2 p-0 m-0 align-self-center">Use Time</div>
+                <div class="col col-3 p-0 m-0 align-self-center">Stage Number</div>
+                <div class="col col-4 p-0 m-0 align-self-center">Actions</div>
+            </div>
+            <% data.forEach(item=> { %>
+                <div class="row px-5 py-3 fs-5 align-items-center approve-item" data-user-id="<%= item.userId %>"
+                    data-stage-id="<%= item.stageId %>">
+                    <p class="col col-3 p-0 m-0" id="username">
+                        <%= item.nickname %>
+                    </p>
+                    <p class="col col-2 p-0 m-0" id="useTime">
+                        <%= (item.endTime - item.startTime) / 1000 %>s
+                    </p>
+                    <span id="message" style="display: none;">
+                        <%= item.message %>
+                    </span>
+                    <p class="col col-3 p-0 m-0" id="stage-id">
+                        <%= item.stageId %>
+                    </p>
+                    <div class="col col-4 p-0 m-0">
+                        <button class="approve-btn" data-user-id="<%= item.userId %>"
+                            data-stage-id="<%= item.stageId %>" data-start-time="<%= item.startTime %>"
+                            data-end-time="<%= item.endTime %>" data-item-useds="<%= item.itemUseds %>">Approve</button>
+                        <% if (item.message) { %>
+                            <button class="message-btn" data-user-id="<%= item.userId %>"
+                                data-stage-id="<%= item.stageId %>">Message</button>
+                            <% } %>
+                                <!-- <button class="reject-btn" onclick="joke()">Reject</button> -->
+                    </div>
+                </div>
+                <% }); %>
+        </div>
+    </div>
+
+    <script>
+        const searchBtn = document.querySelector("#search-btn");
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // const menuItems = document.querySelectorAll(".menu-item");
+            const searchText = document.querySelector("#search-text");
+
+            // const activeGame = localStorage.getItem("activeGame");
+
+            // menuItems.forEach(menuItem => {
+            //     const game = menuItem.getAttribute("data-game");
+
+            //     menuItem.addEventListener('click', (e) => {
+            //         menuItems.forEach(i => i.classList.remove('active'));
+            //         e.target.classList.add('active');
+            //         localStorage.setItem("activeGame", game);
+            //         loadTable();
+            //     });
+
+            //     if (activeGame && activeGame == game) {
+            //         menuItem.click();
+            //     }
+            // });
+
+
+            if (searchText) {
+                searchText.addEventListener("input", (e) => {
+                    localStorage.setItem("searchText", e.target.value);
+                });
+
+                searchText.value = localStorage.getItem("searchText");
+            }
+
+            loadTable();
+        });
+
+        searchBtn.addEventListener("click", loadTable);
+
+        document.querySelectorAll(".approve-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const d = btn.dataset;
+                approve(d.userId, d.stageId, d.startTime, d.endTime, d.itemUseds);
+            });
+        });
+
+        document.querySelectorAll(".message-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const userId = btn.getAttribute("data-user-id");
+                const stageId = btn.getAttribute("data-stage-id");
+
+                showMessage(userId, stageId);
+            });
+        });
+
+        async function approve(userId, stageId, startTime, endTime, itemUseds) {
+            const selector = `.approve-item[data-user-id="${userId}"][data-stage-id="${stageId}"]`;
+            const message = document.querySelector(selector)?.querySelector("#message")?.innerText;
+            await fetch("./approved", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ userId, stageId, startTime, endTime, itemUseds, message }),
+            });
+            location.reload();
+        }
+
+        function showMessage(userId, stageId) {
+            const selector = `.approve-item[data-user-id="${userId}"][data-stage-id="${stageId}"]`;
+            const message = document.querySelector(selector)?.querySelector("#message")?.innerText;
+            if (message)
+                alert(message);
+        }
+
+        function reject(username, stageId, startTime, endTime, itemUseds) {
+            fetch("./rejected", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ username, stageId }),
+            });
+            location.reload();
+        }
+
+        function loadTable() {
+            const searchText = document.querySelector("#search-text");
+            // const activeMenuItem = document.querySelector(".menu-item.active");
+
+            // if (!searchText || !activeMenuItem)
+            //     return;
+
+            if (!searchText)
+                return;
+
+            const searchString = searchText.value;
+            // const activeGame = activeMenuItem.getAttribute("data-game");
+
+            const approveItems = document.querySelectorAll(".approve-item");
+
+            approveItems.forEach(approveItem => {
+                const usernameElement = approveItem.querySelector("#username");
+
+                if (usernameElement) {
+                    const username = usernameElement.innerText;
+
+                    // if (username.includes(searchString) && gameItem.getAttribute("data-game") === activeGame) {
+                    if (username.includes(searchString)) {
+                        approveItem.style.display = null;
+                    } else {
+                        approveItem.style.display = "none";
+                    }
+                }
+            });
+        }
+
+        function joke() {
+            alert("ไม่ได้ทำครับ");
+        }
+    </script>
+
+    <script src="../bs-5/js/bootstrap.min.js"></script>
+</body>
+
+</html>

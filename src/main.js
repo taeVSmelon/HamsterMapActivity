@@ -1,6 +1,6 @@
 import { DiscordSDK } from "@discord/embedded-app-sdk";
-import { createApp } from "vue";
-import App from "./App.vue";
+// import { createApp } from "vue";
+// import App from "./App.vue";
 
 const CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID;
 const discordSdk = new DiscordSDK(CLIENT_ID);
@@ -19,7 +19,7 @@ const setupDiscordSdk = async () => {
       "guilds.members.read",
       "connections",
       "applications.commands",
-      // "rpc.activities.write",
+      "rpc.activities.write",
       // "activities.read",
       // "activities.write"
     ],
@@ -37,7 +37,6 @@ const setupDiscordSdk = async () => {
 
   const { access_token } = await response.json();
 
-  // Authenticate with Discord client (using the access_token)
   const auth = await discordSdk.commands.authenticate({
     access_token,
   });
@@ -81,7 +80,7 @@ const loginDiscord = async (discordId, nickname, username, email) => {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      discordId,
+      userId: discordId,
       nickname,
       username,
       email
@@ -153,4 +152,35 @@ setupDiscordSdk().then(async (auth) => {
   }
 });
 
-createApp(App).mount("#app");
+// createApp(App).mount("#app");
+
+// if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+//   // Mobile device style: fill the whole browser client area with the game canvas:
+//   var meta = document.createElement('meta');
+//   meta.name = 'viewport';
+//   meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+//   document.getElementsByTagName('head')[0].appendChild(meta);
+
+//   var canvas = document.querySelector("#unity-canvas");
+//   canvas.style.width = "100%";
+//   canvas.style.height = "100%";
+//   canvas.style.position = "fixed";
+
+//   document.body.style.textAlign = "left";
+// }
+
+createUnityInstance(document.querySelector("#unity-canvas"), {
+  arguments: [],
+  // dataUrl: "/.proxy/api/build/HamsterMap.data",
+  // frameworkUrl: "/.proxy/api/build/HamsterMap.framework.js",
+  // codeUrl: "/.proxy/api/build/HamsterMap.wasm",
+  dataUrl: "/.proxy/api/build/HamsterMap.data.br",
+  frameworkUrl: "/.proxy/api/build/HamsterMap.framework.js.br",
+  codeUrl: "/.proxy/api/build/HamsterMap.wasm.br",
+  streamingAssetsUrl: "StreamingAssets",
+  companyName: "HamsterTown",
+  productName: "HamsterMap",
+  productVersion: "1.0",
+  // matchWebGLToCanvasSize: false, // Uncomment this to separately control WebGL canvas render size and DOM element size.
+  // devicePixelRatio: 1, // Uncomment this to override low DPI rendering on high DPI displays.
+});

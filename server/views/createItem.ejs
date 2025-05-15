@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Create Item</title>
+
+    <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        img#itemIcon {
+            max-width: 300px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="mb-4">Create Item</h1>
+
+        <form id="item-form">
+            <div class="mb-3">
+                <label for="choiceSelect" class="form-label">Choose one</label>
+                <select class="form-select" id="itemSelector">
+                    <option value="NormalItem" selected>Normal Item</option>
+                    <option value="CoreItem">Core Item</option>
+                    <option value="VoidItem">Void Item</option>
+                </select>
+            </div>
+
+            <div class="alert alert-secondary">
+                <label for="setIconInput" class="form-label">Item Icon</label>
+                <input class="form-control" type="file" id="setIconInput" accept="image/*" required>
+                <br>
+                <img id="itemIcon" src="#" alt="Preview" class="img-thumbnail" style="display: none;">
+                <br>
+                <br>
+                <label for="itemName">Item Name</label>
+                <input type="text" id="itemName" name="itemName" class="form-control" placeholder="เกลือ" required />
+                <br>
+                <label for="itemDescription">Item Description</label>
+                <input type="text" id="itemDescription" name="itemDescription" class="form-control" placeholder="เค็ม"
+                    required />
+                <br>
+                <label for="canStack">Can Stack</label>
+                <input type="checkbox" id="canStack" class="form-check-input" checked />
+                <br>
+
+                <div id="CoreItem" class="mt-3 d-none item">
+                    <label for="health">Health</label>
+                    <input type="number" id="health" name="health" class="form-control" placeholder="100" step="0.01" />
+                    <br>
+                    <label for="armor">Armor</label>
+                    <input type="number" id="armor" name="armor" class="form-control" placeholder="10" step="0.01" />
+                </div>
+
+                <div id="VoidItem" class="mt-3 d-none item">
+                    <label for="minDamage">Min Damage</label>
+                    <input type="number" id="minDamage" name="minDamage" class="form-control" placeholder="5"
+                        step="0.01" />
+                    <br>
+                    <label for="maxDamage">Max Damage</label>
+                    <input type="number" id="maxDamage" name="maxDamage" class="form-control" placeholder="20"
+                        step="0.01" />
+                    <br>
+                    <label for="minSpeed">Min Speed</label>
+                    <input type="number" id="minSpeed" name="minSpeed" class="form-control" placeholder="0.5"
+                        step="0.01" />
+                    <br>
+                    <label for="maxSpeed">Max Speed</label>
+                    <input type="number" id="maxSpeed" name="maxSpeed" class="form-control" placeholder="1.5"
+                        step="0.01" />
+                    <br>
+                    <label for="chargeTime">Charge Time</label>
+                    <input type="number" id="chargeTime" name="chargeTime" class="form-control" placeholder="1.2"
+                        step="0.01" />
+                    <br>
+                    <label for="forcePower">Force Power</label>
+                    <input type="number" id="forcePower" name="forcePower" class="form-control" placeholder="1"
+                        step="0.01" />
+                    <br>
+                    <label for="lifeTime">Life Time</label>
+                    <input type="number" id="lifeTime" name="lifeTime" class="form-control" placeholder="3"
+                        step="0.01" />
+                    <br>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success">Create</button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById("item-form");
+        const selector = document.querySelector("#itemSelector");
+        const setIconInput = document.querySelector("#setIconInput");
+        const itemIcon = document.querySelector("#itemIcon");
+        const canStack = document.querySelector("#canStack")
+
+        setIconInput.addEventListener('change', function () {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    itemIcon.style.display = null;
+                    itemIcon.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        selector.addEventListener("change", loadItemDiv);
+
+        loadItemDiv();
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const base64String = itemIcon.src;
+
+            const responseUploadIcon = await fetch("./upload-image", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ base64: base64String })
+            });
+
+            if (responseUploadIcon.ok) {
+                const responseUploadIconJson = await responseUploadIcon.json();
+                const iconPath = responseUploadIconJson["path"];
+
+                const formData = new FormData(form);
+                const name = formData.get("itemName");
+                const description = formData.get("itemDescription");
+                const health = formData.get("health");
+                const armor = formData.get("armor");
+                const minDamage = formData.get("minDamage");
+                const maxDamage = formData.get("maxDamage");
+                const minSpeed = formData.get("minSpeed");
+                const maxSpeed = formData.get("maxSpeed");
+                const chargeTime = formData.get("chargeTime");
+                const forcePower = formData.get("forcePower");
+                const lifeTime = formData.get("lifeTime");
+
+                const payload = {
+                    type: selector.value,
+                    iconPath,
+                    name,
+                    description,
+                    canStack: canStack.checked,
+                    health,
+                    armor,
+                    minDamage,
+                    maxDamage,
+                    minSpeed,
+                    maxSpeed,
+                    chargeTime,
+                    forcePower,
+                    lifeTime,
+                    skills: []
+                };
+
+                console.log(payload);
+
+                const response = await fetch("./item/create", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                alert(JSON.stringify(result, null, 2));
+            }
+        });
+
+        function loadItemDiv() {
+            document.querySelectorAll(".item").forEach(itemDiv => {
+                itemDiv.classList.add("d-none");
+                itemDiv.querySelectorAll("input").forEach(input => input.removeAttribute("required"))
+            });
+
+            const selectedName = selector.value;
+            if (selectedName) {
+                const activeItem = document.querySelector(`#${selectedName}`);
+
+                if (activeItem) {
+                    activeItem.classList.remove("d-none");
+                    activeItem.querySelectorAll("input").forEach(input => input.setAttribute("required", true))
+                }
+
+                if (selectedName === "NormalItem") {
+                    canStack.checked = true;
+                    canStack.removeAttribute("disabled");
+                }
+                else {
+                    canStack.checked = false;
+                    canStack.setAttribute("disabled", true);
+                }
+            }
+        }
+    </script>
+
+    <script src="../bs-5/js/bootstrap.min.js"></script>
+</body>
+
+</html>

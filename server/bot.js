@@ -37,7 +37,7 @@ const createBotClient = async (app) => {
 
             res.json({
                 username: member.user.username,
-                nickname: member.nickname,
+                nickname: member.nickname ?? member.user.username,
                 id: member.user.id
             });
         } catch (e) {

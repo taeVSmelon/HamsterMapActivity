@@ -1,12 +1,11 @@
 import { WebSocketServer } from "ws";
 import { parse } from "url";
 import jwt from "jsonwebtoken";
-import RaidBoss from "./models/raid.js";
+import RaidBoss from "./classes/raid.js";
 import userModel from "./models/user.js";
-import { JWT_SECRET } from "./middlewares/authenticateToken.js";
+import { authenticateToken, JWT_SECRET } from "./middlewares/authenticateToken.js";
+import WsUserData from "./classes/wsUserData.js";
 
-const discordIdToWs = new Map();
-const notifyClients = new Set();
 const raidClients = new Map(); // ws => username
 
 const setupWebsocket = (app, server) => {
@@ -35,20 +34,20 @@ const setupWebsocket = (app, server) => {
       return ws.close(1008, "Unauthorized");
     }
 
-    console.log(`New connection: ${event || "unknown"}`);
-
     jwt.verify(token, JWT_SECRET, async (err, user) => {
       if (err) {
         console.log(`Error connection: ${err}`);
         return ws.close(1008, "Unauthorized");
       }
 
-      const discordId = user.discordId;
+      const userId = user.userId;
 
-      if (event === "raid" && discordId) {
+      console.log(`New connection: ${event || "unknown"} (${userId})`);
+
+      if (event === "raid" && userId) {
         if (raidBoss.active) {
-          discordIdToWs.set(discordId, ws);
-          raidClients.set(ws, discordId);
+          raidClients.set(ws, userId);
+
           ws.send(
             JSON.stringify({
               e: "RS",
@@ -60,8 +59,8 @@ const setupWebsocket = (app, server) => {
           );
         } else ws.close();
       } else if (event === "notify") {
-        discordIdToWs.set(discordId, ws);
-        notifyClients.add(ws);
+        const wsUserData = WsUserData.addNew(ws, userId, Date.now());
+
         if (raidBoss.active) {
           ws.send(
             JSON.stringify({
@@ -73,8 +72,16 @@ const setupWebsocket = (app, server) => {
             }),
           );
         }
+        
+        ws.send(
+          JSON.stringify({
+            e: "AT",
+            t: wsUserData.afkRewardTime
+          }),
+        );
       } else {
         ws.close();
+        WsUserData.removeByWs(ws);
         return;
       }
 
@@ -87,18 +94,18 @@ const setupWebsocket = (app, server) => {
           return;
         }
 
-        const { id: discordId, u: username, s: signal, d: damage } = data;
-        if (!raidBoss.active || !discordId || !signal) return;
+        const { id: userId, u: username, s: signal, d: damage } = data;
+        if (!raidBoss.active || !userId || !signal) return;
 
         switch (signal) {
           case "TD":
             if (typeof damage !== "number" || damage <= 0) return;
 
-            const updated = raidBoss.takeDamage(ws, discordId, username, damage);
+            const updated = raidBoss.takeDamage(ws, userId, username, damage);
 
             if (updated) {
               console.log(
-                `${discordId} dealt ${damage} damage. Boss HP: ${raidBoss.health}`,
+                `${userId} dealt ${damage} damage. Boss HP: ${raidBoss.health}`,
               );
               broadcast(raidClients.keys(), { e: "UBH", h: raidBoss.health });
             }
@@ -113,21 +120,25 @@ const setupWebsocket = (app, server) => {
                 .filter(([_, data]) => data.damage > 0)
                 .map(([_, data]) => data.ws);
               const sortedPlayers = Array.from(raidBoss.playerJoins.entries())
-                .map(([discordId, data]) => ({ discordId, username: data.username, damage: data.damage }))
+                .map(([userId, data]) => ({ userId, username: data.username, damage: data.damage }))
                 .sort((a, b) => b.damage - a.damage);
               const bestPlayer = {
-                discordId: sortedPlayers[0].discordId,
+                userId: sortedPlayers[0].userId,
                 username: sortedPlayers[0].username,
                 damage: sortedPlayers[0].damage,
                 damagePercent: sortedPlayers[0].damage / bossMaxHealth * 100,
               };
 
-              broadcast(activeSockets, {
-                e: "RE",
-                w: true,
-                r: rewardId,
-                bu: bestPlayer.username,
-                bd: bestPlayer.damagePercent,
+              activeSockets.forEach(activeSocket => {
+                activeSocket.send(
+                  JSON.stringify({
+                    e: "RE",
+                    w: true,
+                    r: rewardId,
+                    bu: bestPlayer.username,
+                    bd: bestPlayer.damagePercent,
+                  }),
+                );
               });
               broadcast(
                 Object.keys(raidClients).filter((item) =>
@@ -140,7 +151,7 @@ const setupWebsocket = (app, server) => {
                   bd: bestPlayer.damagePercent,
                 },
               );
-              broadcast(notifyClients, {
+              broadcast(WsUserData.getAllWs(), {
                 e: "RE",
                 w: true,
                 bu: bestPlayer.username,
@@ -183,16 +194,16 @@ const setupWebsocket = (app, server) => {
       });
 
       ws.on("close", () => {
-        if (notifyClients.has(ws)) {
-          notifyClients.delete(ws);
-        } else if (raidClients.has(ws)) {
+        WsUserData.removeByWs(ws);
+
+        if (raidClients.has(ws)) {
           raidClients.delete(ws);
         }
       });
     });
   });
 
-  app.post("/notify/startRaid", (req, res) => {
+  app.post("/raid/start", (req, res) => {
     const {
       bossPrefabName,
       maxHealth,
@@ -222,7 +233,7 @@ const setupWebsocket = (app, server) => {
 
     console.log(`Raid started: ${bossPrefabName} (${maxHealth}, ${damage})`);
 
-    broadcast(notifyClients, {
+    broadcast(WsUserData.getAllWs(), {
       e: "RS",
       b: bossPrefabName,
       mH: maxHealth,
@@ -231,24 +242,16 @@ const setupWebsocket = (app, server) => {
     return res.json({ success: true });
   });
 
-  app.post("/notify/stopRaid", (req, res) => {
+  app.post("/raid/stop", (req, res) => {
     raidBoss.deactivate();
-    broadcast(notifyClients, { e: "RE", w: false });
+    broadcast(WsUserData.getAllWs(), { e: "RE", w: false });
     broadcast(raidClients.keys(), { e: "RE", w: false });
     return res.json({ success: true });
   });
 
-  app.post("/notify/broadcast", (req, res) => {
-    const { message, color } = req.body;
-    if (!message) return res.status(400).json({ error: "Missing message" });
-
-    broadcast(notifyClients, { e: "N", m: message, c: color });
-    return res.json({ sent: true });
-  });
-
-  app.get("/notify/raidStatus", (req, res) => {
+  app.get("/raid", (req, res) => {
     const sortedPlayers = Array.from(raidBoss.playerJoins.entries())
-      .map(([discordId, data]) => ({ discordId, username: data.username, damage: data.damage }))
+      .map(([userId, data]) => ({ userId, username: data.username, damage: data.damage }))
       .sort((a, b) => b.damage - a.damage);
 
     return res.json({
@@ -264,29 +267,35 @@ const setupWebsocket = (app, server) => {
     });
   });
 
-  app.get("/raidManager", async (req, res) => {
-    const sortedPlayers = Array.from(raidBoss.playerJoins.entries())
-      .map(([discordId, data]) => ({ discordId, username: data.username, damage: data.damage }))
-      .sort((a, b) => b.damage - a.damage);
+  // app.get("/raidManager", async (req, res) => {
+  //   const sortedPlayers = Array.from(raidBoss.playerJoins.entries())
+  //     .map(([userId, data]) => ({ userId, username: data.username, damage: data.damage }))
+  //     .sort((a, b) => b.damage - a.damage);
 
-    res.render("raid", {
-      raidBoss: {
-        active: raidBoss.active,
-        boss: raidBoss.bossPrefabName,
-        maxHealth: raidBoss.maxHealth,
-        health: raidBoss.health,
-        damage: raidBoss.damage,
-        rewardId: raidBoss.rewardId,
-        updateHealthChange: raidBoss.updateHealthChange,
-        topScoreReward: raidBoss.topScoreReward,
-        playerJoins: sortedPlayers,
-      },
-    });
-  });
+  //   res.render("raid", {
+  //     raidBoss: {
+  //       active: raidBoss.active,
+  //       boss: raidBoss.bossPrefabName,
+  //       maxHealth: raidBoss.maxHealth,
+  //       health: raidBoss.health,
+  //       damage: raidBoss.damage,
+  //       rewardId: raidBoss.rewardId,
+  //       updateHealthChange: raidBoss.updateHealthChange,
+  //       topScoreReward: raidBoss.topScoreReward,
+  //       playerJoins: sortedPlayers,
+  //     },
+  //   });
+  // });
 };
 
-function getWebSocketWithDiscordId(discordId) {
-  return discordIdToWs.get(discordId);
+function getWebSocketWithUserId(userId) {
+  if (typeof userId === "string") {
+    userId = Number.parseFloat(userId);
+  }
+
+  const ws = WsUserData.getWsByUserId(userId);
+
+  return ws;
 }
 
-export { setupWebsocket, getWebSocketWithDiscordId };
+export { setupWebsocket, getWebSocketWithUserId };

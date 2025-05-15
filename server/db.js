@@ -7,13 +7,14 @@ const mongoURL = process.env.MONGODB_URI;
 
 // Connect to MongoDB
 async function connectDB() {
-    mongoose.connect(mongoURL)
-    .then(() => {
+    try {
+        const mongoDB = await mongoose.connect(mongoURL);
         console.log('Connected to MongoDB successfully');
-    })
-    .catch((error) => {
+
+        return mongoDB;
+    } catch {
         console.error('Error connecting to MongoDB:', error);
-    });
+    }
 }
 
 // Export mongoose for use in other files

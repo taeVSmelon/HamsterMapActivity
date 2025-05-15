@@ -16,7 +16,7 @@ const authenticateToken = async (req, res, next) => {
       return res.status(401).json({ error: "Access token expired or invalid" });
     }
 
-    req.discordId = user.discordId;
+    req.userId = user.userId;
 
     next();
   });

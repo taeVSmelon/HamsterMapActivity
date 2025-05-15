@@ -8,32 +8,33 @@
     "game": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "server": "nodemon server/server.js"
+    "server": "nodemon server/server.js",
+    "test": "nodemon server/test.js"
   },
   "dependencies": {
     "@discord/embedded-app-sdk": "^2.0.0",
     "axios": "1.9.0",
     "compression": "^1.8.0",
     "cors": "^2.8.5",
-    "discord.js": "^14.19.2",
+    "discord.js": "14.19.3",
     "dotenv": "^16.5.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
-    "express-static-gzip": "^2.2.0",
-    "fs": "^0.0.1-security",
+    "express-static-gzip": "3.0.0",
+    "fs": "0.0.2",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "8.14.1",
+    "mongoose": "8.14.2",
     "mongoose-sequence": "^6.0.1",
     "nanoid": "5.1.5",
     "node-fetch": "^3.3.2",
     "nodemon": "^3.1.10",
     "unity-webgl": "^4.4.2",
     "vue": "^3.5.13",
-    "ws": "^8.18.1"
+    "ws": "8.18.2"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.2.2",
+    "@vitejs/plugin-vue": "5.2.4",
     "concurrently": "^9.1.2",
-    "vite": "^6.3.1"
+    "vite": "6.3.5"
   }
 }

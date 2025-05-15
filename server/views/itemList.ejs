@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Item List</title>
+
+    <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        img#icon {
+            max-width: 300px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="mb-4">Item List</h1>
+
+        <div class="row px-5 py-3 fs-3 align-items-center fw-bold alert alert-dark">
+            <p class="col col-3 p-0 m-0">ID</p>
+            <p class="col col-3 p-0 m-0">Name</p>
+            <p class="col col-3 p-0 m-0">Description</p>
+            <p class="col col-3 p-0 m-0">Can Stack</p>
+        </div>
+
+        <div class="m-0 p-0">
+            <% data.forEach(item=> { %>
+                <div class="row px-5 py-3 fs-5 align-items-center alert alert-secondary">
+                    <p class="col col-3 p-0 m-0" id="id">
+                        <%= item.id %>
+                    </p>
+                    <p class="col col-3 p-0 m-0" id="name">
+                        <%= item.name %>
+                    </p>
+                    <p class="col col-3 p-0 m-0" id="description">
+                        <%= item.description %>
+                    </p>
+                    <p class="col col-3 p-0 m-0" id="canStack">
+                        <%= item.canStack %>
+                    </p>
+                </div>
+                <% }); %>
+        </div>
+    </div>
+
+    <script src="../bs-5/js/bootstrap.min.js"></script>
+</body>
+
+</html>

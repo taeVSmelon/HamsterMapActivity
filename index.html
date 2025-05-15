@@ -1,21 +1,19 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unity Web Player | HamsterMap</title>
 
-<head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vite + Vue</title>
-
-  <link rel="preload" href="/.proxy/api/build/HamsterMap.data.br" as="fetch" crossorigin="anonymous">
-  <link rel="preload" href="/.proxy/api/build/HamsterMap.framework.js.br" as="script">
-  <link rel="preload" href="/.proxy/api/build/HamsterMap.wasm.br" as="fetch" type="application/wasm" crossorigin="anonymous">
-
-</head>
-
-<body>
-  <div id="app"></div>
-  <script type="module" src="./src/main.js"></script>
-</body>
-
+    <link rel="preload" href="/.proxy/api/build/HamsterMap.data.br" as="fetch" crossorigin="anonymous">
+    <link rel="preload" href="/.proxy/api/build/HamsterMap.framework.js.br" as="script">
+    <link rel="preload" href="/.proxy/api/build/HamsterMap.wasm.br" as="fetch" type="application/wasm" crossorigin="anonymous">
+  </head>
+  
+  <body style="text-align: center; padding: 0; border: 0; margin: 0; background-color: #000000;">
+    <canvas id="unity-canvas" width=960 height=600 tabindex="-1" style="width: 100vw; height: 100vh; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #000000"></canvas>
+    <script src="/.proxy/api/build/HamsterMap.loader.js"></script>
+    <script type="module" src="./src/main.js"></script>
+  </body>
 </html>

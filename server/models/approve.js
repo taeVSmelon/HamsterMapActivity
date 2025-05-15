@@ -1,19 +1,15 @@
 import mongoose from "mongoose";
 
-const dataSchema = new mongoose.Schema({
+const approveSchema = new mongoose.Schema({
     nickname: { type: String, required: true},
-    discordId : { type: Number, required: true },
-    game : { type: String, required: true},
-    type: { type: String, required: true },
-    stageId: { type: String, required: true },
-    // rewardId: { type: String, required: true },
+    userId : { type: Number, required: true },
+    stageId: { type: Number, required: true },
     startTime: { type: Number, required: true },
     endTime: { type: Number, required: true },
     itemUseds: { type: [String], default: [] },
-    code: { type: String, default: null }
-  
+    message: { type: String, default: null }
 });
 
-const dataModel = mongoose.model("Approve", dataSchema, "Approve");
+const approveModel = mongoose.model("Approve", approveSchema, "Approve");
 
-export default dataModel;
+export default approveModel;

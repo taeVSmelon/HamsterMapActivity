@@ -6,11 +6,11 @@ dotenv.config({ path: "./.env" });
 // https://vite.dev/config/
 export default defineConfig({
   envDir: './',
-  plugins: [vue()],
+  plugins: [vue()], // เดะลองปิดดู
   server: {
     port: process.env.PUBLIC_PORT,
     allowedHosts: [
-      'yearly-parent-corpus-seriously.trycloudflare.com',
+      'tribal-internet-accessories-china.trycloudflare.com',
       'localhost',  // ถ้ายังไม่เพิ่ม localhost
     ],
     proxy: {
@@ -23,4 +23,4 @@ export default defineConfig({
       }
     }
   }
-})
+});
