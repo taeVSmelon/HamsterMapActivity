@@ -25,6 +25,7 @@ import { itemModel } from "./models/item.js";
 import WsUserData from "./classes/wsUserData.js";
 import { FixedItemId, FixedRewardService, loadAllFixedItem, RewardGroup } from "./services/fixedRewardService.js";
 import FixedReward from "./classes/fixedReward.js";
+import { stageModel } from "./models/stage.js";
 dotenv.config({ path: "./.env" });
 
 const app = express();
@@ -35,6 +36,8 @@ connectDB().then(loadAllFixedItem);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(path.dirname(__filename));
+
+const fileSizes = new Map();
 
 app.use(compression());
 
@@ -59,23 +62,24 @@ app.use('/build', expressStaticGzip(path.join(__dirname, 'public/Build'), {
   fallthrough: true,
   orderPreference: ['br', 'gz'],
   setHeaders: (res, filePath) => {
-    res.setHeader('Content-Encoding', 'br');
+    // if (filePath.endsWith('.br')) {
+    //   res.setHeader('Content-Encoding', 'br');
+    // }
 
-    if (filePath.endsWith('.wasm.br')) {
+    if (filePath.endsWith('.wasm') || filePath.endsWith('.wasm.br')) {
       res.setHeader('Content-Type', 'application/wasm');
-    } else if (filePath.endsWith('.js.br')) {
+    } else if (filePath.endsWith('.js') || filePath.endsWith('.js.br')) {
       res.setHeader('Content-Type', 'application/javascript');
-    } else if (filePath.endsWith('.data.br')) {
+    } else if (filePath.endsWith('.data') || filePath.endsWith('.data.br')) {
       res.setHeader('Content-Type', 'application/octet-stream');
     }
 
-    if (filePath.endsWith('.br')) {
-      res.setHeader('Cache-Control', 'public, max-age=360, immutable');
-    }
-
     try {
-      const stat = fs.statSync(filePath);
-      res.setHeader('Content-Length', stat.size);
+      if (!fileSizes.has(filePath)) {
+        const stat = fs.statSync(filePath);
+        fileSizes.set(filePath, stat.size);
+      }
+      res.setHeader('Content-Length', fileSizes.get(filePath));
     } catch (e) {
       console.warn('Cannot set Content-Length:', e);
     }
@@ -374,6 +378,29 @@ app.get("/rewardCollected/:rewardCollectedId", authenticateToken, checkIsJson, a
   const rewardCollected = user.stats.clearedStages.find(cs => cs.reward.id == rewardCollectedId);
 
   res.json({ rewardCollected });
+});
+
+app.put("/updateHealth", authenticateToken, checkIsJson, async (req, res) => {
+  const { health } = req.body;
+  const userId = req.userId;
+  
+  const user = await userModel.findOne({ id: userId });
+
+  if (!user) return res.status(400).json({ message: "User not found" });
+
+  if (health <= 0) {
+    user.stats.level = Math.max(1, user.stats.level - 1);
+    user.stats.health = user.stats.maxHealth;
+    await user.save();
+  } else {
+    user.stats.health = health;
+    await user.save();
+  }
+
+  return res.json({
+    health: user.stats.health,
+    level: user.stats.level
+  });
 });
 
 app.post("/sendStage", authenticateToken, checkIsJson, async (req, res) => {

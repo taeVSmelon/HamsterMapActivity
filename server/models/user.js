@@ -76,6 +76,7 @@ const statSchema = new mongoose.Schema(
     maxExp: { type: Number, default: 0 },
     exp: { type: Number, default: 0 },
     maxHealth: { type: Number, default: 100 },
+    health: { type: Number, default: 100 },
     inventory: {
       type: [inventoryItemSchema],
       default: [],

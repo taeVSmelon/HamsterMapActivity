@@ -25,7 +25,10 @@ const setupWebsocket = (app, server) => {
 
   wss.on("connection", (ws, req) => {
     const parsedUrl = parse(req.url, true);
-    const { token, event, secret } = parsedUrl.query;
+    const { token, event, secret, worldId, stageId } = parsedUrl.query;
+
+    if (worldId <= 0 || stageId <= 0)
+      return ws.close(1008, "Unauthorized");
 
     if (secret !== WEBHOOK_SECRET) {
       console.log(
@@ -44,6 +47,8 @@ const setupWebsocket = (app, server) => {
 
       console.log(`New connection: ${event || "unknown"} (${userId})`);
 
+      let wsUserData = null;
+
       if (event === "raid" && userId) {
         if (raidBoss.active) {
           raidClients.set(ws, userId);
@@ -58,8 +63,8 @@ const setupWebsocket = (app, server) => {
             }),
           );
         } else ws.close();
-      } else if (event === "notify") {
-        const wsUserData = WsUserData.addNew(ws, userId, Date.now());
+      } else if (event === "overworld") {
+        wsUserData = WsUserData.addNew(ws, worldId, userId, stageId, Date.now());
 
         if (raidBoss.active) {
           ws.send(
@@ -72,16 +77,17 @@ const setupWebsocket = (app, server) => {
             }),
           );
         }
-        
+
         ws.send(
           JSON.stringify({
             e: "AT",
             t: wsUserData.afkRewardTime
           }),
         );
+
+        await wsUserData.loadOtherPositions();
       } else {
         ws.close();
-        WsUserData.removeByWs(ws);
         return;
       }
 
@@ -94,12 +100,12 @@ const setupWebsocket = (app, server) => {
           return;
         }
 
-        const { id: userId, u: username, s: signal, d: damage } = data;
-        if (!raidBoss.active || !userId || !signal) return;
+        const { u: username, s: signal, sid: stageId, d: damage } = data;
+        if (!signal) return;
 
         switch (signal) {
           case "TD":
-            if (typeof damage !== "number" || damage <= 0) return;
+            if (!raidBoss.active || typeof damage !== "number" || damage <= 0) return;
 
             const updated = raidBoss.takeDamage(ws, userId, username, damage);
 
@@ -190,10 +196,15 @@ const setupWebsocket = (app, server) => {
               }
             }
             break;
+
+          case "UP":
+            await wsUserData.updatePosition(stageId);
+            break;
         }
       });
 
-      ws.on("close", () => {
+      ws.on("close", async () => {
+        await wsUserData.updatePosition(-1);
         WsUserData.removeByWs(ws);
 
         if (raidClients.has(ws)) {

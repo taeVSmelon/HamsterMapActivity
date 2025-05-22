@@ -1,5 +1,4 @@
-import { Client, GatewayIntentBits, DiscordAPIError } from 'discord.js';
-import { authenticateToken, JWT_SECRET, checkIsJson } from "./middlewares/authenticateToken.js";
+import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, MessageFlags } from 'discord.js';
 import dotenv from "dotenv";
 dotenv.config({ path: "./.env" });
 
@@ -10,16 +9,53 @@ const createBotClient = async (app) => {
     const client = new Client({
         intents: [
             GatewayIntentBits.Guilds,
-            GatewayIntentBits.GuildMembers,
-        ],
+            GatewayIntentBits.GuildMembers
+        ]
     });
 
     client.once('ready', async () => {
         console.log(`Bot logged in as ${client.user.tag}`);
+
+        // Register the slash command
+        const commands = [
+            new SlashCommandBuilder()
+                .setName('checkid')
+                .setDescription('Returns a Discord user ID')
+                .addUserOption(option =>
+                    option.setName('target')
+                        .setDescription('The user to check')
+                        .setRequired(false)
+                )
+        ].map(command => command.toJSON());
+
+        const rest = new REST({ version: '10' }).setToken(BOT_TOKEN);
+
+        try {
+            await rest.put(
+                Routes.applicationGuildCommands(client.user.id, HAMSTER_HUB_GUILD),
+                { body: commands },
+            );
+        } catch (error) {
+            console.error('❌ Failed to register commands:', error);
+        }
+    });
+
+    client.on('interactionCreate', async (interaction) => {
+        if (!interaction.isChatInputCommand()) return;
+
+        if (interaction.commandName === 'checkid') {
+            const targetUser = interaction.options.getUser('target') ?? interaction.user;
+
+            await interaction.reply({
+                content: `${targetUser.username}'s ID is: ${targetUser.id}`,
+                ephemeral: true
+            });
+        }
     });
 
     await client.login(BOT_TOKEN);
 
+    // Keep your /hamsterHub/user route here as it is
     app.get("/hamsterHub/user", async (req, res) => {
         const { userId } = req.query;
 

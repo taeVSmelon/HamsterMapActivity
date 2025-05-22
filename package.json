@@ -23,13 +23,14 @@
     "express-static-gzip": "3.0.0",
     "fs": "0.0.2",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "8.14.2",
+    "mongoose": "8.15.0",
     "mongoose-sequence": "^6.0.1",
     "nanoid": "5.1.5",
     "node-fetch": "^3.3.2",
     "nodemon": "^3.1.10",
     "unity-webgl": "^4.4.2",
-    "vue": "^3.5.13",
+    "uuid": "^11.1.0",
+    "vue": "3.5.14",
     "ws": "8.18.2"
   },
   "devDependencies": {

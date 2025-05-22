@@ -2,16 +2,32 @@ import { DiscordSDK } from "@discord/embedded-app-sdk";
 // import { createApp } from "vue";
 // import App from "./App.vue";
 
+// document.addEventListener("visibilitychange", function() {
+//   if (document.visibilityState === "visible") {
+//       console.log("Page is visible");
+//       // Try to re-init Unity rendering loop if needed
+//   } else {
+//       console.log("Page is hidden");
+//       // Optionally warn or pause yourself
+//   }
+// });
+
 const CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID;
 const discordSdk = new DiscordSDK(CLIENT_ID);
 
 const setupDiscordSdk = async () => {
   await discordSdk.ready();
 
+  const state = 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+
   const { code } = await discordSdk.commands.authorize({
     client_id: import.meta.env.VITE_DISCORD_CLIENT_ID,
     response_type: "code",
-    state: "",
+    state: state,
     prompt: "none",
     scope: [
       "identify",
@@ -20,6 +36,7 @@ const setupDiscordSdk = async () => {
       "connections",
       "applications.commands",
       "rpc.activities.write",
+      "openid",
       // "activities.read",
       // "activities.write"
     ],
@@ -95,14 +112,20 @@ const loginDiscord = async (discordId, nickname, username, email) => {
 
 
 setupDiscordSdk().then(async (auth) => {
+  console.log("AAA");
   if (auth) {
     const accessToken = auth["access_token"];
 
     window._requestBaseApi = `${CLIENT_ID}.discordsays.com/.proxy/api`;
+    
+  console.log("BBB");
 
     try {
       const { email } = await getUser(accessToken);
+      console.log("CCC");
       const { username, nickname, id } = await getHamsterHubData(auth.user.id);
+      
+  console.log("DDD");
 
       // window._nickname = nickname;
       // window._username = username;
@@ -111,6 +134,8 @@ setupDiscordSdk().then(async (auth) => {
 
       const loginData = await loginDiscord(id, nickname, username, email);
       window._loginData = JSON.stringify(loginData);
+      
+  console.log("EEE");
 
       // try {
       //   const result = await discordSdk.commands.setActivity({
@@ -146,9 +171,11 @@ setupDiscordSdk().then(async (auth) => {
       // }
     } catch (err) {
       console.error("Background user init failed:", err);
+      console.log("FFF");
     }
   } else {
     discordSdk.close(4001, "User not authorized");
+    console.log("GGG");
   }
 });
 
@@ -171,12 +198,12 @@ setupDiscordSdk().then(async (auth) => {
 
 createUnityInstance(document.querySelector("#unity-canvas"), {
   arguments: [],
-  // dataUrl: "/.proxy/api/build/HamsterMap.data",
-  // frameworkUrl: "/.proxy/api/build/HamsterMap.framework.js",
-  // codeUrl: "/.proxy/api/build/HamsterMap.wasm",
-  dataUrl: "/.proxy/api/build/HamsterMap.data.br",
-  frameworkUrl: "/.proxy/api/build/HamsterMap.framework.js.br",
-  codeUrl: "/.proxy/api/build/HamsterMap.wasm.br",
+  dataUrl: "/.proxy/api/build/HamsterMap.data",
+  frameworkUrl: "/.proxy/api/build/HamsterMap.framework.js",
+  codeUrl: "/.proxy/api/build/HamsterMap.wasm",
+  // dataUrl: "/.proxy/api/build/HamsterMap.data.br",
+  // frameworkUrl: "/.proxy/api/build/HamsterMap.framework.js.br",
+  // codeUrl: "/.proxy/api/build/HamsterMap.wasm.br",
   streamingAssetsUrl: "StreamingAssets",
   companyName: "HamsterTown",
   productName: "HamsterMap",
