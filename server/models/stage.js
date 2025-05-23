@@ -2,6 +2,32 @@ import mongoose from "mongoose";
 import mongooseSequence from "mongoose-sequence";
 const AutoIncrement = mongooseSequence(mongoose);
 
+const stageSchema = new mongoose.Schema(
+    {
+        id: {
+            type: Number,
+            unique: true,
+            index: true
+        },
+        type: {
+            type: String,
+            default: "Stage"
+        },
+        stageName: {
+            type: String,
+            required: true
+        },
+        reward: {
+            type: mongoose.Types.ObjectId,
+            ref: "Reward",
+            default: undefined
+        }
+    },
+    {
+        discriminatorKey: "type",
+    }
+);
+
 const valueSchema = new mongoose.Schema(
     {
         valueType: {
@@ -31,43 +57,92 @@ const npcSchema = new mongoose.Schema(
     { _id: false, timestamps: false },
 );
 
-const stageSchema = new mongoose.Schema(
+const codeStageSchema = new mongoose.Schema({
+    description: {
+        type: [valueSchema],
+        default: []
+    },
+    exampleOutput: {
+        type: String,
+        default: ""
+    },
+    npc: {
+        type: npcSchema,
+        default: null
+    },
+    haveApprove: {
+        type: Boolean,
+        default: false
+    },
+});
+
+const enemySpawnData = new mongoose.Schema(
     {
-        id: {
+        enemyPrefabName: {
+            type: String,
+            required: true,
+        },
+        count: {
             type: Number,
-            unique: true,
-            index: true
+            default: 1,
         },
-        stageName: {
-            type: String,
-            require: true
-        },
-        description: {
-          type: [valueSchema],
-          required: true,
-        },
-        exampleOutput: {
-            type: String,
-            default: ""
-        },
-        npc: {
-            type: npcSchema,
-            default: null
-        },
-        haveApprove: {
-            type: Boolean,
-            default: false
-        },
-        reward: {
-            type: mongoose.Types.ObjectId,
-            ref: "Reward",
-            default: undefined
-        }
-    }
+    },
+    { _id: false }
 );
+
+const wavesSchema = new mongoose.Schema(
+    {
+        enemySpawnDatas: {
+            type: [enemySpawnData],
+            default: []
+        },
+        bossPrefabName: {
+            type: String,
+            default: null,
+        },
+        bossPosition: {
+            type: new mongoose.Schema(
+                {
+                    x: { type: Number, required: true },
+                    y: { type: Number, required: true },
+                },
+                { _id: false }
+            ),
+            default: null,
+        },
+    },
+    { _id: false }
+);
+
+const combatStageSchema = new mongoose.Schema({
+    dungeon: {
+        waves: {
+            type: wavesSchema,
+            required: true,
+        },
+    },
+});
 
 stageSchema.plugin(AutoIncrement, { id: 'stage_id', inc_field: 'id', start_seq: 1000000 });
 
-const stageModel = mongoose.model("Stage", stageSchema, "Stage");
+stageSchema.pre("save", function (next) {
+    if (this.type === "Stage") {
+        return next(new Error("Cannot save base Stage model directly."));
+    }
+    next();
+});
 
-export { stageModel, stageSchema };
+stageSchema.pre("insertMany", function (next, docs) {
+    const hasBaseStage = docs.some(doc => doc.type === "Stage");
+    if (hasBaseStage) {
+        return next(new Error("Cannot insert base Stage model directly."));
+    }
+    next();
+});
+
+const stageModel = mongoose.model("Stage", stageSchema, "Stage");
+const codeStageModel = stageModel.discriminator("CodeStage", codeStageSchema, "CodeStage");
+const combatStageModel = stageModel.discriminator("CombatStage", combatStageSchema, "CombatStage");
+
+export { stageModel, 
+    codeStageModel, combatStageModel, stageSchema };

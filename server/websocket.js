@@ -3,7 +3,7 @@ import { parse } from "url";
 import jwt from "jsonwebtoken";
 import RaidBoss from "./classes/raid.js";
 import userModel from "./models/user.js";
-import { authenticateToken, JWT_SECRET } from "./middlewares/authenticateToken.js";
+import { JWT_SECRET } from "./middlewares/authenticateToken.js";
 import WsUserData from "./classes/wsUserData.js";
 
 const raidClients = new Map(); // ws => username
@@ -27,8 +27,12 @@ const setupWebsocket = (app, server) => {
     const parsedUrl = parse(req.url, true);
     const { token, event, secret, worldId, stageId } = parsedUrl.query;
 
-    if (worldId <= 0 || stageId <= 0)
+    if (worldId <= 0 || stageId <= 0) {
+      console.log(
+        `WebSocket Unauthorized closed.. ${worldId} ${stageId}`,
+      );
       return ws.close(1008, "Unauthorized");
+    }
 
     if (secret !== WEBHOOK_SECRET) {
       console.log(
@@ -104,98 +108,98 @@ const setupWebsocket = (app, server) => {
         if (!signal) return;
 
         switch (signal) {
-          case "TD":
-            if (!raidBoss.active || typeof damage !== "number" || damage <= 0) return;
+          // case "TD":
+          //   if (!raidBoss.active || typeof damage !== "number" || damage <= 0) return;
 
-            const updated = raidBoss.takeDamage(ws, userId, username, damage);
+          //   const updated = raidBoss.takeDamage(ws, userId, username, damage);
 
-            if (updated) {
-              console.log(
-                `${userId} dealt ${damage} damage. Boss HP: ${raidBoss.health}`,
-              );
-              broadcast(raidClients.keys(), { e: "UBH", h: raidBoss.health });
-            }
+          //   if (updated) {
+          //     console.log(
+          //       `${userId} dealt ${damage} damage. Boss HP: ${raidBoss.health}`,
+          //     );
+          //     broadcast(raidClients.keys(), { e: "UBH", h: raidBoss.health });
+          //   }
 
-            if (raidBoss.health <= 0) {
-              console.log(`Raid Ended. Players: ${raidBoss.playerJoins.size}`);
-              const bossMaxHealth = raidBoss.maxHealth;
-              const rewardId = raidBoss.rewardId;
-              const playerJoins = raidBoss.playerJoins;
-              raidBoss.deactivate();
-              const activeSockets = [...playerJoins]
-                .filter(([_, data]) => data.damage > 0)
-                .map(([_, data]) => data.ws);
-              const sortedPlayers = Array.from(raidBoss.playerJoins.entries())
-                .map(([userId, data]) => ({ userId, username: data.username, damage: data.damage }))
-                .sort((a, b) => b.damage - a.damage);
-              const bestPlayer = {
-                userId: sortedPlayers[0].userId,
-                username: sortedPlayers[0].username,
-                damage: sortedPlayers[0].damage,
-                damagePercent: sortedPlayers[0].damage / bossMaxHealth * 100,
-              };
+          //   if (raidBoss.health <= 0) {
+          //     console.log(`Raid Ended. Players: ${raidBoss.playerJoins.size}`);
+          //     const bossMaxHealth = raidBoss.maxHealth;
+          //     const rewardId = raidBoss.rewardId;
+          //     const playerJoins = raidBoss.playerJoins;
+          //     raidBoss.deactivate();
+          //     const activeSockets = [...playerJoins]
+          //       .filter(([_, data]) => data.damage > 0)
+          //       .map(([_, data]) => data.ws);
+          //     const sortedPlayers = Array.from(raidBoss.playerJoins.entries())
+          //       .map(([userId, data]) => ({ userId, username: data.username, damage: data.damage }))
+          //       .sort((a, b) => b.damage - a.damage);
+          //     const bestPlayer = {
+          //       userId: sortedPlayers[0].userId,
+          //       username: sortedPlayers[0].username,
+          //       damage: sortedPlayers[0].damage,
+          //       damagePercent: sortedPlayers[0].damage / bossMaxHealth * 100,
+          //     };
 
-              activeSockets.forEach(activeSocket => {
-                activeSocket.send(
-                  JSON.stringify({
-                    e: "RE",
-                    w: true,
-                    r: rewardId,
-                    bu: bestPlayer.username,
-                    bd: bestPlayer.damagePercent,
-                  }),
-                );
-              });
-              broadcast(
-                Object.keys(raidClients).filter((item) =>
-                  !activeSockets.includes(item)
-                ),
-                {
-                  e: "RE",
-                  w: true,
-                  bu: bestPlayer.username,
-                  bd: bestPlayer.damagePercent,
-                },
-              );
-              broadcast(WsUserData.getAllWs(), {
-                e: "RE",
-                w: true,
-                bu: bestPlayer.username,
-                bd: bestPlayer.damagePercent,
-              });
+          //     activeSockets.forEach(activeSocket => {
+          //       activeSocket.send(
+          //         JSON.stringify({
+          //           e: "RE",
+          //           w: true,
+          //           r: rewardId,
+          //           bu: bestPlayer.username,
+          //           bd: bestPlayer.damagePercent,
+          //         }),
+          //       );
+          //     });
+          //     broadcast(
+          //       Object.keys(raidClients).filter((item) =>
+          //         !activeSockets.includes(item)
+          //       ),
+          //       {
+          //         e: "RE",
+          //         w: true,
+          //         bu: bestPlayer.username,
+          //         bd: bestPlayer.damagePercent,
+          //       },
+          //     );
+          //     broadcast(WsUserData.getAllWs(), {
+          //       e: "RE",
+          //       w: true,
+          //       bu: bestPlayer.username,
+          //       bd: bestPlayer.damagePercent,
+          //     });
 
-              const scoreFields = ["python", "unity", "blender", "website"];
+          //     const scoreFields = ["python", "unity", "blender", "website"];
 
-              const bulkOps = [];
+          //     const bulkOps = [];
 
-              for (let i = 0; i < sortedPlayers.length; i++) {
-                const username = sortedPlayers[i].username;
-                const updated = {};
+          //     for (let i = 0; i < sortedPlayers.length; i++) {
+          //       const username = sortedPlayers[i].username;
+          //       const updated = {};
 
-                for (const field of scoreFields) {
-                  if (raidBoss.topScoreReward[field]) {
-                    const scoreToAdd = raidBoss.topScoreReward[field]?.[i] || 0;
-                    updated[`score.${field}`] = scoreToAdd;
-                  }
-                }
+          //       for (const field of scoreFields) {
+          //         if (raidBoss.topScoreReward[field]) {
+          //           const scoreToAdd = raidBoss.topScoreReward[field]?.[i] || 0;
+          //           updated[`score.${field}`] = scoreToAdd;
+          //         }
+          //       }
 
-                if (Object.keys(updated).length > 0) {
-                  bulkOps.push({
-                    updateOne: {
-                      filter: { username },
-                      update: {
-                        $inc: updated,
-                      },
-                    },
-                  });
-                }
-              }
+          //       if (Object.keys(updated).length > 0) {
+          //         bulkOps.push({
+          //           updateOne: {
+          //             filter: { username },
+          //             update: {
+          //               $inc: updated,
+          //             },
+          //           },
+          //         });
+          //       }
+          //     }
 
-              if (bulkOps.length > 0) {
-                await userModel.bulkWrite(bulkOps);
-              }
-            }
-            break;
+          //     if (bulkOps.length > 0) {
+          //       await userModel.bulkWrite(bulkOps);
+          //     }
+          //   }
+          //   break;
 
           case "UP":
             await wsUserData.updatePosition(stageId);

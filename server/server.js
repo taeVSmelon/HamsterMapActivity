@@ -25,7 +25,6 @@ import { itemModel } from "./models/item.js";
 import WsUserData from "./classes/wsUserData.js";
 import { FixedItemId, FixedRewardService, loadAllFixedItem, RewardGroup } from "./services/fixedRewardService.js";
 import FixedReward from "./classes/fixedReward.js";
-import { stageModel } from "./models/stage.js";
 dotenv.config({ path: "./.env" });
 
 const app = express();
@@ -320,7 +319,12 @@ app.get("/getWorlds", authenticateToken, async (req, res) => {
 
   if (!user) return res.status(400).json({ message: "User not found" });
 
-  const worlds = await worldModel.find({ whitelists: { $in: [req.userId] } }).lean();
+  const worlds = await worldModel.find({
+    $or: [
+      { whitelists: { $in: [req.userId] } },
+      { whitelists: { $size: 0 } }
+    ]
+  }).lean();
 
   res.status(200).json({
     worlds: worlds.map(world => {

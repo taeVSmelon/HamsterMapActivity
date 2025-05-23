@@ -12,7 +12,7 @@ import leaderboardModel from "./models/leaderboard.js";
 import fuseModel from "./models/Fuse.js";
 import { coreItemModel, voidItemModel, itemModel } from "./models/item.js";
 import rewardModel from "./models/reward.js";
-import { stageModel } from "./models/stage.js";
+import { codeStageModel, combatStageModel, stageModel } from "./models/stage.js";
 import userModel from "./models/user.js";
 import WsUserData from "./classes/wsUserData.js";
 
@@ -387,30 +387,47 @@ adminRouter.post("/leaderboard/create", checkIsJson, async (req, res) => {
 });
 
 adminRouter.post("/world/create", checkIsJson, async (req, res) => {
-  const { worldName, stages = [], whitelists = [] } = req.body;
+  const { worldName, stages: stageDatas = [], whitelists = [] } = req.body;
 
   if (!worldName) {
     return res.status(400).json({ message: "World name is required" });
   }
 
   const createdStages = new Set();
+  const discriminatorMap = {
+    CodeStage: codeStageModel,
+    CombatStage: combatStageModel,
+  };
 
-  for (const stageData of stages) {
-    const { stageName, description, exampleOutput, npc, haveApprove, rewardId } = stageData;
+  for (const stageData of stageDatas) {
+    const { stageType, stageName, description, exampleOutput, npc, haveApprove, rewardId, dungeon } = stageData;
 
     const reward = await rewardModel.findOne({ id: rewardId });
 
-    if (stageName && description) {
-      const stage = await stageModel.create({
-        stageName,
-        description,
-        exampleOutput,
-        npc,
-        haveApprove,
-        reward: reward?._id || undefined
-      });
-
-      createdStages.add(stage._id);
+    if (stageName) {
+      const childrenStageModel = discriminatorMap[stageType];
+      if (childrenStageModel) {
+        if (childrenStageModel.modelName === codeStageModel.modelName) {
+          const stage = await childrenStageModel.create({
+            stageName,
+            description,
+            exampleOutput,
+            npc,
+            haveApprove,
+            reward: reward?._id || undefined
+          });
+    
+          createdStages.add(stage._id);
+        } else if (childrenStageModel.modelName === combatStageModel.modelName && dungeon) {
+          const stage = await childrenStageModel.create({
+            stageName,
+            dungeon,
+            reward: reward?._id || undefined
+          });
+    
+          createdStages.add(stage._id);
+        }
+      }
     }
   }
 

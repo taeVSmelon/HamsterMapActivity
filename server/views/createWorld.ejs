@@ -345,7 +345,6 @@
                 if (stageName) {
                     const stageData = new Map();
 
-                    stageData.set("stageName", stageName);
                     if (exampleOutput) stageData.set("exampleOutput", exampleOutput);
                     if (haveApprove) stageData.set("haveApprove", haveApprove);
                     if (rewardId) stageData.set("rewardId", rewardId);
@@ -448,6 +447,8 @@
                     if (descriptionArray.length > 0) stageData.set("description", descriptionArray);
 
                     if ([...stageData.keys()].length > 0) {
+                        stageData.set("stageName", stageName);
+                        stageData.set("stageType", "CodeStage");
                         // Convert Map to Object for JSON serialization
                         stageDatas.push(Object.fromEntries(stageData));
                     }

@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import userModel from "../models/user.js";
 import rewardModel from "../models/reward.js";
 import { itemModel } from "../models/item.js";
-import { stageModel } from "../models/stage.js";
 import { LeaderboardService } from "./leaderboardService.js";
 import { InventoryService } from "./inventoryService.js";
+import { stageModel } from "../models/stage.js";
 
 class UserService {
   /**
