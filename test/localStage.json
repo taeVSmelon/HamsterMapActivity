@@ -1,0 +1,133 @@
+[
+  {
+    "_stage": "1-0",
+    "id": "752460",
+    "type": "CodeStage",
+    "description": [
+      {
+        "valueType": "text",
+        "value": "ก้าวแรกของจริงแล้วว สร้างโปรเจค 3D กัน\n<color=\"red\">ดูดีๆถ้าน้องไม่สร้างโปรเจคเป็น Universal 3D พี่จะกินหัวน้อง\n<color=\"black\">กด New Project"
+      },
+      {
+        "valueType": "text",
+        "value": "เลือก Universal 3D เท่านั้นนะ"
+      }
+    ],
+    "hint": "...",
+    "exampleOutput": "",
+    "npc": {
+      "npcName": "PatriX",
+      "dialog": [
+        {
+          "valueType": "text",
+          "value": "สำหรับคนที่ขึ้นว่า <b>Unable to Create Project</b>\nไปด่าน EX3 เลยครับน้องง\n"
+        }
+      ]
+    }
+  },
+  {
+    "_stage": "1-1",
+    "id": "121595",
+    "rewardId": "67ef92971d0548cb07bc772f",
+    "type": "CodeStage",
+    "description": [
+      {
+        "valueType": "text",
+        "value": "ก้าวแรกของจริงแล้วว สร้างโปรเจค 3D กัน\n<color=\"red\">ดูดีๆถ้าน้องไม่สร้างโปรเจคเป็น Universal 3D พี่จะกินหัวน้อง\n<color=\"black\">กด New Project"
+      },
+      {
+        "valueType": "text",
+        "value": "เลือก Universal 3D เท่านั้นนะ"
+      }
+    ],
+    "hint": "...",
+    "exampleOutput": "",
+    "npc": {
+      "npcName": "PatriX",
+      "dialog": [
+        {
+          "valueType": "text",
+          "value": "สำหรับคนที่ขึ้นว่า <b>Unable to Create Project</b>\nไปด่าน EX3 เลยครับน้องง\n"
+        }
+      ]
+    }
+  },
+  {
+    "_stage": "1-2",
+    "id": "139038",
+    "type": "CodeStage",
+    "description": [
+      {
+        "valueType": "text",
+        "value": "ก้าวแรกของจริงแล้วว สร้างโปรเจค 3D กัน\n<color=\"red\">ดูดีๆถ้าน้องไม่สร้างโปรเจคเป็น Universal 3D พี่จะกินหัวน้อง\n<color=\"black\">กด New Project"
+      },
+      {
+        "valueType": "text",
+        "value": "เลือก Universal 3D เท่านั้นนะ"
+      }
+    ],
+    "hint": "...",
+    "exampleOutput": "",
+    "npc": {
+      "npcName": "PatriX",
+      "dialog": [
+        {
+          "valueType": "text",
+          "value": "สำหรับคนที่ขึ้นว่า <b>Unable to Create Project</b>\nไปด่าน EX3 เลยครับน้องง\n"
+        }
+      ]
+    }
+  },
+  {
+    "_stage": "Starter",
+      "type": "CombatStage",
+      "dungeon": {
+          "waves": [
+              {
+                  "enemySpawnDatas": [
+                      {
+                          "enemyPrefabName": "MeleeEnemy",
+                          "count": 1
+                      },
+                      {
+                          "enemyPrefabName": "HealEnemy",
+                          "count": 1
+                      },
+                      {
+                          "enemyPrefabName": "ChargeEnemy",
+                          "count": 1
+                      },
+                      {
+                          "enemyPrefabName": "RangedEnemy",
+                          "count": 1
+                      }
+                  ],
+                  "bossPrefabName": null,
+                  "bossPosition": null
+              },
+              {
+                  "enemySpawnDatas": [
+                    {
+                        "enemyPrefabName": "MeleeEnemy",
+                        "count": 2
+                    },
+                    {
+                        "enemyPrefabName": "HealEnemy",
+                        "count": 2
+                    },
+                    {
+                        "enemyPrefabName": "ChargeEnemy",
+                        "count": 2
+                    },
+                    {
+                        "enemyPrefabName": "RangedEnemy",
+                        "count": 2
+                    }
+                  ],
+                  "bossPrefabName": null,
+                  "bossPosition": null
+              }
+          ]
+      }
+  }
+]

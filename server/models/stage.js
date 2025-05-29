@@ -2,6 +2,19 @@ import mongoose from "mongoose";
 import mongooseSequence from "mongoose-sequence";
 const AutoIncrement = mongooseSequence(mongoose);
 
+const enemyNames = {
+    normal: [
+        "ChargeEnemy",
+        "MeleeEnemy",
+        "HealEnemy",
+        "RangedEnemy",
+    ],
+    boss: [
+        "MrXBoss",
+        "SamuraiBoss",
+    ]
+};
+
 const stageSchema = new mongoose.Schema(
     {
         id: {
@@ -21,6 +34,10 @@ const stageSchema = new mongoose.Schema(
             type: mongoose.Types.ObjectId,
             ref: "Reward",
             default: undefined
+        },
+        worldId: {
+            type: Number,
+            required: true
         }
     },
     {
@@ -66,6 +83,10 @@ const codeStageSchema = new mongoose.Schema({
         type: String,
         default: ""
     },
+    realAnswer: {
+        type: String,
+        default: null
+    },
     npc: {
         type: npcSchema,
         default: null
@@ -90,7 +111,7 @@ const enemySpawnData = new mongoose.Schema(
     { _id: false }
 );
 
-const wavesSchema = new mongoose.Schema(
+const waveSchema = new mongoose.Schema(
     {
         enemySpawnDatas: {
             type: [enemySpawnData],
@@ -117,7 +138,7 @@ const wavesSchema = new mongoose.Schema(
 const combatStageSchema = new mongoose.Schema({
     dungeon: {
         waves: {
-            type: wavesSchema,
+            type: [waveSchema],
             required: true,
         },
     },
@@ -144,5 +165,4 @@ const stageModel = mongoose.model("Stage", stageSchema, "Stage");
 const codeStageModel = stageModel.discriminator("CodeStage", codeStageSchema, "CodeStage");
 const combatStageModel = stageModel.discriminator("CombatStage", combatStageSchema, "CombatStage");
 
-export { stageModel, 
-    codeStageModel, combatStageModel, stageSchema };
+export { stageModel, codeStageModel, combatStageModel, stageSchema, enemyNames };

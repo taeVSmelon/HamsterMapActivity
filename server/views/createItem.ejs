@@ -46,6 +46,18 @@
                 <label for="canStack">Can Stack</label>
                 <input type="checkbox" id="canStack" class="form-check-input" checked />
                 <br>
+                <label for="canBuy">Can Buy</label>
+                <input type="checkbox" id="canBuy" class="form-check-input" checked />
+                <br>
+                <label for="buyPrice">Buy Price</label>
+                <input type="number" id="buyPrice" name="buyPrice" class="form-control" placeholder="123" value="0" required />
+                <br>
+                <label for="canSell">Can Sell</label>
+                <input type="checkbox" id="canSell" class="form-check-input" checked />
+                <br>
+                <label for="sellPrice">Sell Price</label>
+                <input type="number" id="sellPrice" name="sellPrice" class="form-control" placeholder="123" value="0" required />
+                <br>
 
                 <div id="CoreItem" class="mt-3 d-none item">
                     <label for="health">Health</label>
@@ -56,6 +68,10 @@
                 </div>
 
                 <div id="VoidItem" class="mt-3 d-none item">
+                    <label for="voidPrefabName">Void Prefab Name</label>
+                    <input type="text" id="voidPrefabName" name="voidPrefabName" class="form-control"
+                        placeholder="เกลือ" />
+                    <br>
                     <label for="minDamage">Min Damage</label>
                     <input type="number" id="minDamage" name="minDamage" class="form-control" placeholder="5"
                         step="0.01" />
@@ -84,6 +100,11 @@
                     <input type="number" id="lifeTime" name="lifeTime" class="form-control" placeholder="3"
                         step="0.01" />
                     <br>
+                    <hr>
+                    <h5>Skills</h5>
+                    <div id="skills-container"></div>
+                    <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addSkill()">+ Add
+                        Skill</button>
                 </div>
             </div>
 
@@ -96,7 +117,10 @@
         const selector = document.querySelector("#itemSelector");
         const setIconInput = document.querySelector("#setIconInput");
         const itemIcon = document.querySelector("#itemIcon");
-        const canStack = document.querySelector("#canStack")
+        const canStack = document.querySelector("#canStack");
+        const canBuy = document.querySelector("#canBuy");
+        const canSell = document.querySelector("#canSell");
+        const skillOptions = '<%= skillTypes %>'.split(",");
 
         setIconInput.addEventListener('change', function () {
             const file = this.files[0];
@@ -134,8 +158,11 @@
                 const formData = new FormData(form);
                 const name = formData.get("itemName");
                 const description = formData.get("itemDescription");
+                const buyPrice = formData.get("buyPrice");
+                const sellPrice = formData.get("sellPrice");
                 const health = formData.get("health");
                 const armor = formData.get("armor");
+                const voidPrefabName = formData.get("voidPrefabName");
                 const minDamage = formData.get("minDamage");
                 const maxDamage = formData.get("maxDamage");
                 const minSpeed = formData.get("minSpeed");
@@ -144,14 +171,28 @@
                 const forcePower = formData.get("forcePower");
                 const lifeTime = formData.get("lifeTime");
 
+                const skillElements = document.querySelectorAll("#skills-container .input-group");
+                const skills = [];
+
+                skillElements.forEach(group => {
+                    const skillName = group.querySelector("select").value;
+                    const level = parseInt(group.querySelector("input[name='skillLevel']").value) || 1;
+                    skills.push({ skillName, level });
+                });
+
                 const payload = {
                     type: selector.value,
                     iconPath,
                     name,
                     description,
                     canStack: canStack.checked,
+                    canBuy: canBuy.checked,
+                    buyPrice,
+                    canSell: canSell.checked,
+                    sellPrice,
                     health,
                     armor,
+                    voidPrefabName,
                     minDamage,
                     maxDamage,
                     minSpeed,
@@ -159,10 +200,8 @@
                     chargeTime,
                     forcePower,
                     lifeTime,
-                    skills: []
+                    skills: skills
                 };
-
-                console.log(payload);
 
                 const response = await fetch("./item/create", {
                     method: "POST",
@@ -175,10 +214,90 @@
             }
         });
 
+        function addSkill(skillName = "", level = 1) {
+            const container = document.getElementById("skills-container");
+
+            // ดึง skill ที่เลือกไปแล้ว
+            const selectedSkills = Array.from(container.querySelectorAll("select[name='skillName']")).map(select => select.value);
+
+            // ถ้า skillName ถูกใช้ไปแล้ว ไม่ให้เพิ่ม
+            if (skillName && selectedSkills.includes(skillName)) {
+                alert(`Skill "${skillName}" already selected.`);
+                return;
+            }
+
+            const wrapper = document.createElement("div");
+            wrapper.classList.add("input-group", "mb-2");
+
+            const select = document.createElement("select");
+            select.classList.add("form-select");
+            select.name = "skillName";
+
+            skillOptions.forEach(option => {
+                if (!selectedSkills.includes(option) || option === skillName) {
+                    const opt = document.createElement("option");
+                    opt.value = option;
+                    opt.textContent = option;
+                    if (option === skillName) opt.selected = true;
+                    select.appendChild(opt);
+                }
+            });
+
+            select.addEventListener("change", () => {
+                updateAllSkillDropdowns();
+            });
+
+            const input = document.createElement("input");
+            input.type = "number";
+            input.name = "skillLevel";
+            input.classList.add("form-control");
+            input.placeholder = "Level";
+            input.value = level;
+            input.step = 1;
+            input.min = 1;
+
+            const removeBtn = document.createElement("button");
+            removeBtn.type = "button";
+            removeBtn.textContent = "🗑";
+            removeBtn.classList.add("btn", "btn-outline-danger");
+            removeBtn.onclick = () => {
+                container.removeChild(wrapper);
+                updateAllSkillDropdowns();
+            };
+
+            wrapper.appendChild(select);
+            wrapper.appendChild(input);
+            wrapper.appendChild(removeBtn);
+            container.appendChild(wrapper);
+
+            updateAllSkillDropdowns();
+        }
+
+        function updateAllSkillDropdowns() {
+            const selects = document.querySelectorAll("select[name='skillName']");
+            const selected = Array.from(selects).map(s => s.value);
+
+            selects.forEach(currentSelect => {
+                const currentValue = currentSelect.value;
+                currentSelect.innerHTML = "";
+
+                skillOptions.forEach(option => {
+                    // แสดงเฉพาะ skill ที่ยังไม่ถูกเลือก หรือเป็นค่าปัจจุบันของ dropdown นั้น
+                    if (!selected.includes(option) || option === currentValue) {
+                        const opt = document.createElement("option");
+                        opt.value = option;
+                        opt.textContent = option;
+                        if (option === currentValue) opt.selected = true;
+                        currentSelect.appendChild(opt);
+                    }
+                });
+            });
+        }
+
         function loadItemDiv() {
             document.querySelectorAll(".item").forEach(itemDiv => {
                 itemDiv.classList.add("d-none");
-                itemDiv.querySelectorAll("input").forEach(input => input.removeAttribute("required"))
+                // itemDiv.querySelectorAll("input").forEach(input => input.removeAttribute("required"));
             });
 
             const selectedName = selector.value;
@@ -187,7 +306,7 @@
 
                 if (activeItem) {
                     activeItem.classList.remove("d-none");
-                    activeItem.querySelectorAll("input").forEach(input => input.setAttribute("required", true))
+                    // activeItem.querySelectorAll("input").forEach(input => input.setAttribute("required", true));
                 }
 
                 if (selectedName === "NormalItem") {

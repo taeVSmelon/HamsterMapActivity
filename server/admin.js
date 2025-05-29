@@ -10,9 +10,9 @@ import { LeaderboardService } from "./services/leaderboardService.js";
 import worldModel from "./models/world.js";
 import leaderboardModel from "./models/leaderboard.js";
 import fuseModel from "./models/Fuse.js";
-import { coreItemModel, voidItemModel, itemModel } from "./models/item.js";
+import { coreItemModel, voidItemModel, itemModel, skillTypes } from "./models/item.js";
 import rewardModel from "./models/reward.js";
-import { codeStageModel, combatStageModel, stageModel } from "./models/stage.js";
+import { codeStageModel, combatStageModel, enemyNames, stageModel } from "./models/stage.js";
 import userModel from "./models/user.js";
 import WsUserData from "./classes/wsUserData.js";
 
@@ -34,8 +34,22 @@ adminRouter.get("/createWorld", async (req, res) => {
   res.render("createWorld");
 });
 
+adminRouter.get("/createStage", async (req, res) => {
+  res.render("createStage", { enemyNames });
+});
+
+// adminRouter.get("/updateStage/:stageId", async (req, res) => {
+//   const { stageId } = req.params;
+
+//   const stage = await stageModel.find({ id: stageId }).lean();
+
+//   if (!stage) return res.status(404);
+
+//   res.render("updateStage", stage);
+// });
+
 adminRouter.get("/createItem", async (req, res) => {
-  res.render("createItem");
+  res.render("createItem", { skillTypes });
 });
 
 adminRouter.get("/createFuse", async (req, res) => {
@@ -203,8 +217,13 @@ adminRouter.post(
       name,
       description,
       canStack,
+      canBuy,
+      buyPrice,
+      canSell,
+      sellPrice,
       health,
       armor,
+      voidPrefabName,
       minDamage,
       maxDamage,
       minSpeed,
@@ -212,8 +231,8 @@ adminRouter.post(
       chargeTime,
       forcePower,
       lifeTime,
-      skills,
     } = req.body;
+    let skills = req.body.skills || [];
 
     let newItem;
 
@@ -228,6 +247,11 @@ adminRouter.post(
         iconPath,
         name,
         description,
+        canStack: false,
+        canBuy,
+        buyPrice,
+        canSell,
+        sellPrice,
         health,
         armor,
       });
@@ -236,17 +260,41 @@ adminRouter.post(
         minDamage === undefined || maxDamage === undefined ||
         minSpeed === undefined || maxSpeed === undefined ||
         chargeTime === undefined || forcePower === undefined ||
-        lifeTime === undefined
+        voidPrefabName === undefined || lifeTime === undefined
       ) {
         return res.status(400).json({
           message: "All properties are required for VoidItem",
         });
       }
 
+      if (skills && Array.isArray(skills)) {
+        // ลบ skill ที่ซ้ำกันจาก skillName
+        const seen = new Set();
+        skills = skills.filter((s) => {
+          if (seen.has(s.skillName)) return false;
+          seen.add(s.skillName);
+          return true;
+        });
+      
+        // ลบ skill ที่ไม่ valid ออก (invalid = ไม่อยู่ใน enum, ไม่ใช่ตัวเลข, หรือ level < 1)
+        skills = skills.filter(
+          (s) =>
+            skillTypes.includes(s.skillName) &&
+            typeof s.level === 'number' &&
+            s.level >= 1
+        );
+      }
+
       newItem = await voidItemModel.create({
         iconPath,
         name,
         description,
+        canStack: false,
+        canBuy,
+        buyPrice,
+        canSell,
+        sellPrice,
+        voidPrefabName,
         minDamage,
         maxDamage,
         minSpeed,
@@ -262,6 +310,10 @@ adminRouter.post(
         name,
         description,
         canStack,
+        canBuy,
+        buyPrice,
+        canSell,
+        sellPrice,
       });
     }
 
@@ -272,7 +324,7 @@ adminRouter.post(
 );
 
 adminRouter.put(
-  "/item/update/:itemId",
+  "/item/:itemId/update",
   checkIsJson,
   async (req, res) => {
     const { itemId } = req.params;
@@ -328,10 +380,11 @@ adminRouter.post(
   checkIsJson,
   async (req, res) => {
     // const { exp, itemDrops, leaderScores } = req.body;
-    const { exp, itemDrops } = req.body;
+    const { exp, coin, itemDrops } = req.body;
 
     const newReward = await rewardModel.create({
       exp,
+      coin,
       itemDrops,
       // leaderScores
     });
@@ -343,16 +396,17 @@ adminRouter.post(
 );
 
 adminRouter.put(
-  "/reward/update/:rewardId",
+  "/reward/:rewardId/update",
   checkIsJson,
   async (req, res) => {
     const { rewardId } = req.params;
     // const { exp, itemDrops, leaderScores } = req.body;
-    const { exp, itemDrops } = req.body;
+    const { exp, coin, itemDrops } = req.body;
 
     const updateFields = {};
 
     if (exp !== undefined) updateFields.exp = exp;
+    if (coin !== undefined) updateFields.coin = coin;
     if (itemDrops !== undefined) updateFields.itemDrops = itemDrops;
     // if (leaderScores !== undefined) updateFields.leaderScores = itemDrops;
 
@@ -387,62 +441,24 @@ adminRouter.post("/leaderboard/create", checkIsJson, async (req, res) => {
 });
 
 adminRouter.post("/world/create", checkIsJson, async (req, res) => {
-  const { worldName, stages: stageDatas = [], whitelists = [] } = req.body;
+  const { worldName, whitelists = [] } = req.body;
 
   if (!worldName) {
     return res.status(400).json({ message: "World name is required" });
   }
 
-  const createdStages = new Set();
-  const discriminatorMap = {
-    CodeStage: codeStageModel,
-    CombatStage: combatStageModel,
-  };
-
-  for (const stageData of stageDatas) {
-    const { stageType, stageName, description, exampleOutput, npc, haveApprove, rewardId, dungeon } = stageData;
-
-    const reward = await rewardModel.findOne({ id: rewardId });
-
-    if (stageName) {
-      const childrenStageModel = discriminatorMap[stageType];
-      if (childrenStageModel) {
-        if (childrenStageModel.modelName === codeStageModel.modelName) {
-          const stage = await childrenStageModel.create({
-            stageName,
-            description,
-            exampleOutput,
-            npc,
-            haveApprove,
-            reward: reward?._id || undefined
-          });
-    
-          createdStages.add(stage._id);
-        } else if (childrenStageModel.modelName === combatStageModel.modelName && dungeon) {
-          const stage = await childrenStageModel.create({
-            stageName,
-            dungeon,
-            reward: reward?._id || undefined
-          });
-    
-          createdStages.add(stage._id);
-        }
-      }
-    }
-  }
-
-  const validStageIds = Array.from(createdStages).filter((id) => id !== null);
-
   const newWorld = await worldModel.create({
     worldName,
-    stages: validStageIds,
+    stages: [],
     whitelists,
   });
+  
+  await newWorld.populate("stages")
 
   res.json({ world: newWorld });
 });
 
-adminRouter.patch("/world/update/:worldId", checkIsJson, async (req, res) => {
+adminRouter.patch("/world/:worldId/update", checkIsJson, async (req, res) => {
   const { worldId } = req.params;
   const { worldName, whitelists = [] } = req.body;
 
@@ -462,32 +478,84 @@ adminRouter.patch("/world/update/:worldId", checkIsJson, async (req, res) => {
 
 adminRouter.post("/world/:worldId/stage/create", checkIsJson, async (req, res) => {
   const { worldId } = req.params;
-  const { stageName, description, exampleOutput, npc, haveApprove, rewardId } = req.body;
+  const { stageType, stageName, description, exampleOutput, realAnswer, npc, haveApprove, rewardId, dungeon } = req.body;
 
   const world = await worldModel.findOne({ id: worldId });
-
   if (!world) return res.status(404).json({ message: "World not found" });
 
   const reward = await rewardModel.findOne({ id: rewardId });
 
-  const newStage = await stageModel.create({
-    stageName,
-    description,
-    exampleOutput,
-    npc,
-    haveApprove,
-    reward: reward?._id || undefined
-  });
+  const discriminatorMap = {
+    CodeStage: codeStageModel,
+    CombatStage: combatStageModel,
+  };
+
+  const childrenStageModel = discriminatorMap[stageType];
+  if (!childrenStageModel) {
+    return res.status(400).json({ message: "Invalid stage type" });
+  }
+
+  let newStage;
+  if (childrenStageModel.modelName === codeStageModel.modelName) {
+    newStage = await childrenStageModel.create({
+      stageName,
+      description,
+      exampleOutput,
+      realAnswer,
+      npc,
+      haveApprove,
+      reward: reward?._id || undefined,
+      worldId,
+    });
+  } else if (childrenStageModel.modelName === combatStageModel.modelName) {
+    if (!dungeon) {
+      return res.status(400).json({ message: "Dungeon is required for CombatStage" });
+    }
+    newStage = await childrenStageModel.create({
+      stageName,
+      dungeon,
+      reward: reward?._id || undefined,
+      worldId,
+    });
+  }
 
   await newStage.save();
 
   world.stages.push(newStage._id);
   await world.save();
 
-  res.status(201).json({ stage: newStage });
+  res.json({ stage: newStage });
 });
 
-adminRouter.delete("/world/:worldId/stage/delete/:stageId", async (req, res) => {
+adminRouter.patch("/world/:worldId/stage/:stageId/update", checkIsJson, async (req, res) => {
+  const { stageId } = req.params;
+  const { stageName, description, exampleOutput, realAnswer, npc, haveApprove, rewardId, dungeon } = req.body;
+
+  const stage = await stageModel.findOne({ id: stageId });
+
+  if (!stage) return res.status(404).json({ message: "Stage not found" });
+
+  if (stageName !== undefined) stage.stageName = stageName;
+  if (rewardId !== undefined) {
+    const reward = await rewardModel.findOne({ id: rewardId });
+    stage.reward = reward?._id || undefined;
+  }
+  if (stage.type === "CodeStage") {
+    if (description !== undefined) stage.description = description;
+    if (exampleOutput !== undefined) stage.exampleOutput = exampleOutput;
+    if (realAnswer !== undefined) stage.realAnswer = realAnswer;
+    if (npc !== undefined) stage.npc = npc;
+    if (haveApprove !== undefined) stage.haveApprove = haveApprove;
+  } else if (stage.type === "CombatStage") {
+    if (dungeon !== undefined) stage.dungeon = dungeon;
+  }
+
+  await stage.save();
+
+  res.json({ stage });
+});
+
+adminRouter.delete("/world/:worldId/stage/:stageId/delete", async (req, res) => {
   const { worldId, stageId } = req.params;
 
   const world = await worldModel.findOne({ id: worldId });
@@ -501,29 +569,6 @@ adminRouter.delete("/world/:worldId/stage/delete/:stageId", async (req, res) => 
   await world.save();
 
   res.json({ message: "Stage deleted and removed from world" });
-});
-
-adminRouter.patch("/world/:worldId/stage/update/:stageId", checkIsJson, async (req, res) => {
-  const { stageId } = req.params;
-  const { stageName, description, exampleOutput, npc, haveApprove, rewardId } = req.body;
-
-  const stage = await stageModel.findOne({ id: stageId });
-
-  if (!stage) return res.status(404).json({ message: "Stage not found" });
-
-  if (stageName !== undefined) stage.stageName = stageName;
-  if (description !== undefined) stage.description = description;
-  if (exampleOutput !== undefined) stage.exampleOutput = exampleOutput;
-  if (npc !== undefined) stage.npc = npc;
-  if (haveApprove !== undefined) stage.haveApprove = haveApprove;
-  if (rewardId !== undefined) {
-    const reward = await rewardModel.findOne({ id: rewardId });
-    stage.reward = reward?._id || undefined;
-  }
-
-  await stage.save();
-
-  res.json({ stage });
 });
 
 adminRouter.post("/upload-image", (req, res) => {

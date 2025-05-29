@@ -9,6 +9,10 @@ const rewardSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    coin: {
+      type: Number,
+      default: 0,
+    },
     itemDrops: [
       {
         _id: false,

@@ -2,50 +2,76 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Item List</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Item List</title>
 
-    <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet">
 
-    <style>
-        img#icon {
-            max-width: 300px;
-        }
-    </style>
+  <style>
+    img#icon {
+      max-width: 300px;
+    }
+  </style>
 </head>
 
 <body>
-    <div class="container">
-      <h1 class="mb-4">World List</h1>
-  
-      <% data.forEach(world => { %>
-        <div class="row alert alert-light align-items-center mb-4 p-4">
-            <p class="col p-0 m-0 col-3"><%= world.id %></p>
-            <p class="col p-0 m-0 col-4"><%= world.worldName %></p>
-            <p class="col p-0 m-0 col-5">Whitelists <%= world.whitelists.length %> User</p>
-        </div>
-      <% }); %>
-      <!-- ปุ่มแสดงข้อมูลเพิ่มเติม -->
-      <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#asd" aria-expanded="false" aria-controls="moreInfo">
-        Show More Info
+  <div class="container">
+    <h1 class="mb-4">World List</h1>
+
+    <% data.forEach(world=> { %>
+      <button class="row alert alert-link w-100 fs-4 fw-normal text-dark align-items-center mb-4 p-4" type="button"
+        data-bs-toggle="collapse" data-bs-target="#world-<%=world.id %>" aria-expanded="false" aria-controls="moreInfo">
+        <p class="col p-0 m-0 col-3">
+          <%= world.id %>
+        </p>
+        <p class="col p-0 m-0 col-4">
+          <%= world.worldName %>
+        </p>
+        <p class="col p-0 m-0 col-5">Whitelists <%= world.whitelists.length %> User</p>
       </button>
-  
-      <!-- ส่วนที่ถูกขยาย -->
-      <div class="collapse mt-3" id="asd">
+
+      <div class="collapse mt-3" id="world-<%=world.id %>">
         <div class="card card-body">
-          <h5>More Details</h5>
-          <p>This section contains additional information that becomes visible after clicking the button.</p>
-  
-          <!-- ปุ่มย่อข้อมูล -->
-          <button class="btn btn-secondary mt-2" type="button" data-bs-toggle="collapse" data-bs-target="#asd">
-            Hide Info
-          </button>
+          <% world.stages.forEach(stage=> { %>
+            <div class="row fs-5 pb-2 mx-3">
+              <p class="col col-2 text-center p-0 m-0">
+                <%=stage.id %>
+              </p>
+              <p class="col col-8 p-0 m-0">
+                <%=stage.stageName %>
+              </p>
+              <button type="button" class="btn btn-danger col col-2"
+                onclick="deleteStage('<%=world.id %>', '<%=stage.id %>')">Delete</button>
+            </div>
+            <% }) %>
+
+              <button class="btn btn-secondary mt-2" type="button" data-bs-toggle="collapse"
+                data-bs-target="#world-<%=world.id %>">
+                Hide Info
+              </button>
         </div>
       </div>
-    </div>
+      <% }); %>
+  </div>
 
-    <script src="../bs-5/js/bootstrap.min.js"></script>
+  <script>
+    async function deleteStage(worldId, stageId) {
+      worldId = Number.parseInt(worldId);
+      stageId = Number.parseInt(stageId);
+
+      const response = await fetch(`./world/${worldId}/stage/${stageId}/delete`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+      alert(JSON.stringify(result, null, 2));
+
+      location.reload();
+    }
+  </script>
+
+  <script src="../bs-5/js/bootstrap.min.js"></script>
 </body>
 
 </html>

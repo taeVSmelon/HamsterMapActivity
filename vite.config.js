@@ -10,7 +10,7 @@ export default defineConfig({
   server: {
     port: process.env.PUBLIC_PORT,
     allowedHosts: [
-      'belgium-democracy-failure-fields.trycloudflare.com',
+      'briefs-madrid-term-asylum.trycloudflare.com',
       'localhost',  // ถ้ายังไม่เพิ่ม localhost
     ],
     proxy: {

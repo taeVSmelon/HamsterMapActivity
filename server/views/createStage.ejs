@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Create Stage</title>
+
+    <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        .stage-entry {
+            padding-block: 10px;
+        }
+
+        .stage-content {
+            padding-left: 50px;
+        }
+
+        .description-entry {
+            padding-block: 15px;
+            display: block;
+        }
+
+        .value-entry {
+            margin-left: 20px;
+            margin-block: 5px;
+            display: block;
+        }
+
+        img.preview {
+            max-width: 300px;
+        }
+
+        #stage-container {
+            margin-left: 25px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="mb-4">Create Stage</h1>
+
+        <form id="stage-form">
+            <div class="mb-3">
+                <select class="form-select" id="itemSelector">
+                    <option value="CodeStage" selected>Code Stage</option>
+                    <option value="CombatStage">Combat Stage</option>
+                </select>
+            </div>
+
+            <div class="stage-entry">
+                <label>
+                    World Id:
+                    <input type="text" name="worldId" required>
+                </label>
+
+                <br>
+                <br>
+
+                <label>
+                    Stage Name:
+                    <input type="text" name="stageName" required>
+                </label>
+
+                <br>
+                <br>
+
+                <label>
+                    Reward Id:
+                    <input type="number" name="rewardId">
+                </label>
+
+                <div class="stage-content">
+                    <div id="CodeStage" class="stage">
+                        <div class="description-entry"></div>
+
+                        <button type="button" class="btn btn-secondary"
+                            onclick="createTextValue(this.previousElementSibling)">
+                            Create Text
+                        </button>
+
+                        <input type="file" accept="image/*" onchange="handleImageUpload(this)">
+
+                        <br><br>
+
+                        <label>
+                            Example Output:
+                            <textarea rows="1" cols="30" name="exampleOutput"></textarea>
+                        </label>
+
+                        <br><br>
+
+                        <label>
+                            Real Answer:
+                            <textarea rows="1" cols="30" name="realAnswer"></textarea>
+                        </label>
+
+                        <br>
+                        <hr><br>
+
+                        <div class="npc-entry"></div>
+
+                        <button type="button" class="btn btn-secondary"
+                            onclick="createNpc(this, this.previousElementSibling)">
+                            Create NPC
+                        </button>
+
+                        <br>
+                        <hr><br>
+
+                        <label>
+                            Have Approve:
+                            <input type="checkbox" name="haveApprove">
+                        </label>
+                    </div>
+
+                    <div id="CombatStage" class="stage">
+                        <br>
+                        <h3>Dungeon</h3>
+                        <br>
+                        <div class="dungeon-entry">
+                            <div id="waves-entry"></div>
+
+                            <button type="button" class="btn btn-secondary" id="create-wave-btn">Create Wave</button>
+                        </div>
+                    </div>
+
+                    <br>
+                </div>
+
+                <hr>
+            </div>
+
+            <button type="submit" class="btn btn-success">Create</button>
+        </form>
+    </div>
+
+    <script>
+        const enemyNameData = JSON.parse('<%- JSON.stringify(enemyNames) %>');
+        const selector = document.querySelector("#itemSelector");
+        const createWaveButton = document.querySelector("#create-wave-btn");
+        const form = document.getElementById("stage-form");
+
+        createWaveButton.onclick = () => {
+            const wavesEntry = document.getElementById("waves-entry");
+            const currentWaveCount = wavesEntry.children.length;
+            createWave(wavesEntry, currentWaveCount);
+        };
+
+        function handleImageUpload(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const descriptionEntry = input.previousElementSibling.previousElementSibling;
+                    createImageValue(descriptionEntry, e.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function createTextValue(parentEntry) {
+            const valueEntry = document.createElement("div");
+            valueEntry.classList.add("value-entry");
+            valueEntry.classList.add("value-text");
+
+            const textInput = document.createElement("input");
+            textInput.name = "value";
+            textInput.type = "text";
+            textInput.placeholder = "Text";
+            textInput.setAttribute("required", true);
+
+            const removeBtn = document.createElement("button");
+            removeBtn.classList.add("btn");
+            removeBtn.classList.add("btn-danger");
+            removeBtn.type = "button";
+            removeBtn.innerText = "Remove Text";
+            removeBtn.onclick = () => valueEntry.remove();
+
+            valueEntry.appendChild(textInput);
+            valueEntry.appendChild(removeBtn);
+
+            parentEntry.appendChild(valueEntry);
+        }
+
+        function createImageValue(parentEntry, imageSrc) {
+            const valueEntry = document.createElement("div");
+            valueEntry.classList.add("value-entry");
+            valueEntry.classList.add("value-image");
+
+            // สร้าง preview ใหม่
+            const imagePreview = document.createElement("img");
+            imagePreview.classList.add("preview");
+            imagePreview.name = "value";
+            imagePreview.src = imageSrc;
+
+            // ปุ่มลบ
+            const removeBtn = document.createElement("button");
+            removeBtn.classList.add("btn");
+            removeBtn.classList.add("btn-danger");
+            removeBtn.type = "button";
+            removeBtn.innerText = "Remove Image";
+            removeBtn.onclick = () => valueEntry.remove();
+
+            valueEntry.appendChild(imagePreview);
+            valueEntry.appendChild(removeBtn);
+
+            parentEntry.appendChild(valueEntry);
+        }
+
+        function createNpc(createNpcButton, npcEntry) {
+            const npcNameLabel = document.createElement("label");
+            npcNameLabel.innerText = "NPC Name:";
+
+            const npcName = document.createElement("input");
+            npcName.type = "text";
+            npcName.name = "npcName";
+            npcName.setAttribute("required", true);
+
+            npcNameLabel.appendChild(npcName);
+
+            const npcDialogEntry = document.createElement("div");
+            npcDialogEntry.className = "npc-dialog-entry";
+
+            const createTextButton = document.createElement("button");
+            createTextButton.classList.add("btn");
+            createTextButton.classList.add("btn-secondary");
+            createTextButton.type = "button";
+            createTextButton.innerText = "Create Text";
+            createTextButton.onclick = () => createTextValue(npcDialogEntry);
+
+            const imageInput = document.createElement("input");
+            imageInput.value = "";
+            imageInput.type = "file";
+            imageInput.accept = "image/*";
+
+            imageInput.addEventListener('change', function () {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        createImageValue(npcDialogEntry, e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            const removeNpcButton = document.createElement("button");
+            removeNpcButton.classList.add("btn");
+            removeNpcButton.classList.add("btn-danger");
+            removeNpcButton.type = "button";
+            removeNpcButton.innerText = "Remove NPC";
+            removeNpcButton.onclick = () => {
+                createNpcButton.style.display = null;
+                npcEntry.innerHTML = null;
+            };
+
+            npcEntry.appendChild(npcNameLabel);
+            npcEntry.append(document.createElement("br"));
+            npcEntry.appendChild(npcDialogEntry);
+            npcEntry.append(document.createElement("br"));
+            npcEntry.appendChild(createTextButton);
+            npcEntry.appendChild(imageInput);
+            npcEntry.append(document.createElement("br"));
+            npcEntry.append(document.createElement("br"));
+            npcEntry.appendChild(removeNpcButton);
+
+            createNpcButton.style.display = "none";
+        }
+
+        function createWave(wavesEntry, index) {
+            const waveEntry = document.createElement("div");
+            waveEntry.classList.add("wave-entry", "mb-4", "p-3", "border", "rounded");
+
+            const waveHeader = document.createElement("h5");
+            waveHeader.classList.add("wave-header");
+            waveHeader.innerText = `Wave #${index + 1}`;
+            waveEntry.appendChild(waveHeader);
+
+            // ---- Normal Enemies Section ----
+            const enemySpawnDatas = document.createElement("div");
+            enemySpawnDatas.classList.add("enemy-spawn-datas");
+
+            const addEnemyBtn = document.createElement("button");
+            addEnemyBtn.type = "button";
+            addEnemyBtn.classList.add("btn", "btn-sm", "btn-secondary", "mb-2");
+            addEnemyBtn.innerText = "Add Normal Enemy";
+            addEnemyBtn.onclick = () => {
+                const enemyEntry = document.createElement("div");
+                enemyEntry.classList.add("enemy-entry", "mb-2");
+
+                const select = document.createElement("select");
+                select.name = "enemyPrefabName";
+                select.required = true;
+                select.classList.add("form-control", "mb-1");
+
+                enemyNameData.normal.forEach(name => {
+                    const option = new Option(name, name);
+                    select.appendChild(option);
+                });
+
+                const countInput = document.createElement("input");
+                countInput.type = "number";
+                countInput.name = "count";
+                countInput.placeholder = "Count";
+                countInput.min = 1;
+                countInput.required = true;
+                countInput.classList.add("form-control", "mb-1");
+
+                const removeEnemyBtn = document.createElement("button");
+                removeEnemyBtn.type = "button";
+                removeEnemyBtn.classList.add("btn", "btn-sm", "btn-danger");
+                removeEnemyBtn.innerText = "Remove Enemy";
+                removeEnemyBtn.onclick = () => enemyEntry.remove();
+
+                enemyEntry.appendChild(select);
+                enemyEntry.appendChild(countInput);
+                enemyEntry.appendChild(removeEnemyBtn);
+
+                enemySpawnDatas.appendChild(enemyEntry);
+            };
+
+            // ---- Boss Section ----
+            const bossSection = document.createElement("div");
+            bossSection.classList.add("boss-section", "mb-2");
+
+            const bossLabel = document.createElement("label");
+            bossLabel.innerText = "Boss (optional):";
+
+            const bossSelect = document.createElement("select");
+            bossSelect.name = "bossPrefabName";
+            bossSelect.classList.add("form-control", "mb-1");
+
+            const emptyOption = new Option("-- No Boss --", "");
+            bossSelect.appendChild(emptyOption);
+
+            enemyNameData.boss.forEach(name => {
+                const option = new Option(name, name);
+                bossSelect.appendChild(option);
+            });
+
+            const bossPosX = document.createElement("input");
+            bossPosX.type = "number";
+            bossPosX.name = "bossPositionX";
+            bossPosX.placeholder = "Boss Position X";
+            bossPosX.classList.add("form-control", "mb-1");
+
+            const bossPosY = document.createElement("input");
+            bossPosY.type = "number";
+            bossPosY.name = "bossPositionY";
+            bossPosY.placeholder = "Boss Position Y";
+            bossPosY.classList.add("form-control", "mb-1");
+
+            bossSection.appendChild(bossLabel);
+            bossSection.appendChild(bossSelect);
+            bossSection.appendChild(bossPosX);
+            bossSection.appendChild(bossPosY);
+
+            // ---- Remove Wave ----
+            const removeWaveBtn = document.createElement("button");
+            removeWaveBtn.type = "button";
+            removeWaveBtn.classList.add("btn", "btn-sm", "btn-danger", "mt-2");
+            removeWaveBtn.innerText = "Remove Wave";
+            removeWaveBtn.onclick = () => {
+                wavesEntry.removeChild(waveEntry);
+                updateWaveIndexes();
+            };
+
+            // Append All
+            waveEntry.appendChild(enemySpawnDatas);
+            waveEntry.appendChild(addEnemyBtn);
+            waveEntry.appendChild(document.createElement("hr"));
+            waveEntry.appendChild(bossSection);
+            waveEntry.appendChild(removeWaveBtn);
+
+            wavesEntry.appendChild(waveEntry);
+        }
+
+        selector.addEventListener("change", loadItemDiv);
+
+        loadItemDiv();
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const stageData = new Map();
+
+            const formData = new FormData(form);
+            const worldId = formData.get("worldId");
+            const stageName = formData.get("stageName");
+            const rewardId = formData.get("rewardId");
+            const stageType = selector.value;
+
+            if (!worldId || !stageName || !stageType) return;
+
+            stageData.set("stageName", stageName);
+            stageData.set("stageType", stageType);
+            if (rewardId) stageData.set("rewardId", rewardId);
+
+            if (stageType == "CodeStage") {
+                const descriptionValueEntries = form.querySelector(".description-entry")?.querySelectorAll(".value-entry") ?? [];
+                const npcEntry = form.querySelector(".npc-entry");
+                const npcName = npcEntry?.querySelector("*[name='npcName']")?.value;
+                const npcDialogEntries = npcEntry.querySelector(".npc-dialog-entry")?.querySelectorAll(".value-entry") ?? [];
+                const exampleOutput = form.querySelector("*[name='exampleOutput']")?.value;
+                const realAnswer = form.querySelector("*[name='realAnswer']")?.value;
+                const haveApprove = form.querySelector("*[name='haveApprove']")?.checked ?? false;
+
+                if (exampleOutput) stageData.set("exampleOutput", exampleOutput);
+                if (realAnswer) stageData.set("realAnswer", realAnswer);
+                if (haveApprove) stageData.set("haveApprove", haveApprove);
+
+                const descriptionData = new Set();
+
+                for (const descriptionValueEntry of descriptionValueEntries) {
+                    const valueElement = descriptionValueEntry.querySelector("*[name='value']");
+
+                    if (!valueElement) continue;
+
+                    if (descriptionValueEntry.classList.contains("value-image")) {
+                        const base64String = valueElement.src;
+
+                        const response = await fetch("./upload-image", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({ base64: base64String })
+                        });
+
+                        const result = await response.json();
+
+                        if (response.ok) {
+                            // console.log("Image:", result.path);
+
+                            descriptionData.add({
+                                valueType: "image",
+                                value: result.path
+                            });
+                        }
+                    } else if (descriptionValueEntry.classList.contains("value-text")) {
+                        const text = valueElement.value;
+
+                        // console.log("Text:", text);
+
+                        descriptionData.add({
+                            valueType: "text",
+                            value: text
+                        });
+                    }
+                }
+
+                // Convert Set to Array
+                const descriptionArray = Array.from(descriptionData);
+
+                if (npcEntry && npcName) {
+                    const npcData = new Map();
+                    const dialogData = new Set();
+
+                    npcData.set("npcName", npcName);
+
+                    for (const npcDialogEntry of npcDialogEntries) {
+                        const valueElement = npcDialogEntry.querySelector("*[name='value']");
+
+                        if (!valueElement) continue;
+
+                        if (npcDialogEntry.classList.contains("value-image")) {
+                            const base64String = valueElement.src;
+
+                            const response = await fetch("./upload-image", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify({ base64: base64String })
+                            });
+
+                            const result = await response.json();
+
+                            if (response.ok) {
+                                // console.log("Image:", result.path);
+
+                                dialogData.add({
+                                    valueType: "image",
+                                    value: result.path
+                                });
+                            }
+                        } else if (npcDialogEntry.classList.contains("value-text")) {
+                            const text = valueElement.value;
+
+                            // console.log("Text:", text);
+
+                            dialogData.add({
+                                valueType: "text",
+                                value: text
+                            });
+                        }
+                    }
+
+                    // Convert dialogData Set to Array
+                    const dialogArray = Array.from(dialogData);
+
+                    npcData.set("dialog", dialogArray);
+
+                    stageData.set("npc", Object.fromEntries(npcData));
+                }
+
+                if (descriptionArray.length > 0) stageData.set("description", descriptionArray);
+            } else if (stageType == "CombatStage") {
+                const waves = [];
+                const waveEntries = form.querySelectorAll(".wave-entry");
+
+                waveEntries.forEach(waveEntry => {
+                    const enemySpawnDatas = [];
+                    const enemyEntries = waveEntry.querySelectorAll(".enemy-entry");
+
+                    enemyEntries.forEach(enemyEntry => {
+                        const prefabName = enemyEntry.querySelector("select[name='enemyPrefabName']").value;
+                        const count = parseInt(enemyEntry.querySelector("input[name='count']").value, 10);
+
+                        if (prefabName && count) {
+                            const existingEnemySpawnData = enemySpawnDatas.findIndex(esd => esd.enemyPrefabName === prefabName)
+                            if (existingEnemySpawnData > -1) {
+                                enemySpawnDatas[existingEnemySpawnData].count += count;
+                            } else {
+                                enemySpawnDatas.push({ enemyPrefabName: prefabName, count: count });
+                            }
+                        }
+                    });
+
+                    // 🆕 Add boss fields
+                    const bossSelect = waveEntry.querySelector("select[name='bossPrefabName']");
+                    const bossPrefabName = bossSelect?.value || "";
+
+                    const bossPositionX = parseFloat(waveEntry.querySelector("input[name='bossPositionX']")?.value || "0");
+                    const bossPositionY = parseFloat(waveEntry.querySelector("input[name='bossPositionY']")?.value || "0");
+
+                    // 🧠 Push wave
+                    if (enemySpawnDatas.length > 0 || bossPrefabName) {
+                        const waveData = {
+                            enemySpawnDatas: enemySpawnDatas
+                        };
+
+                        // Only add boss if selected
+                        if (bossPrefabName) {
+                            waveData.bossPrefabName = bossPrefabName;
+                            waveData.bossPosition = {
+                                x: bossPositionX,
+                                y: bossPositionY
+                            };
+                        }
+
+                        waves.push(waveData);
+                    }
+                });
+
+                if (waves.length > 0) {
+                    stageData.set("dungeon", { waves: waves });
+                }
+            }
+
+            const payload = Object.fromEntries(stageData);
+
+            const response = await fetch(`./world/${worldId}/stage/create`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            alert(JSON.stringify(result, null, 2));
+        });
+
+        function updateWaveIndexes() {
+            const waveEntries = document.querySelectorAll(".wave-entry");
+            waveEntries.forEach((entry, i) => {
+                const header = entry.querySelector("h5");
+                if (header) {
+                    header.innerText = `Wave #${i + 1}`;
+                }
+            });
+        }
+
+        function loadItemDiv() {
+            document.querySelectorAll(".stage").forEach(stageDiv => {
+                stageDiv.classList.add("d-none");
+                // stageDiv.querySelectorAll("input").forEach(input => input.removeAttribute("required"));
+            });
+
+            const selectedName = selector.value;
+            if (selectedName) {
+                const activeStage = document.querySelector(`#${selectedName}`);
+
+                if (activeStage) {
+                    activeStage.classList.remove("d-none");
+                    // activeStage.querySelectorAll("input").forEach(input => input.setAttribute("required", true));
+                }
+            }
+        }
+    </script>
+
+    <script src="../bs-5/js/bootstrap.min.js"></script>
+</body>
+
+</html>

@@ -12,6 +12,7 @@ import { DiscordSDK } from "@discord/embedded-app-sdk";
 //   }
 // });
 
+const HAMSTER_HUB_GUILD = import.meta.env.HAMSTER_HUB_GUILD;
 const CLIENT_ID = import.meta.env.VITE_DISCORD_CLIENT_ID;
 const discordSdk = new DiscordSDK(CLIENT_ID);
 
@@ -79,6 +80,15 @@ const getUser = async (accessToken) => {
     return null;
 }
 
+const isHamsterUser = async () => {
+  const context = await discordSdk.commands.getContext();
+  console.log("Discord context:", context);
+
+  const guildId = context.guildId;
+
+  return guildId == HAMSTER_HUB_GUILD;
+}
+
 const getHamsterHubData = async (userId) => {
   const response = await fetch(`/.proxy/api/hamsterHub/user?userId=${encodeURIComponent(userId)}`, {
     method: "GET",
@@ -112,20 +122,18 @@ const loginDiscord = async (discordId, nickname, username, email) => {
 
 
 setupDiscordSdk().then(async (auth) => {
-  console.log("AAA");
-  if (auth) {
+  if (auth && isHamsterUser()) {
     const accessToken = auth["access_token"];
 
     window._requestBaseApi = `${CLIENT_ID}.discordsays.com/.proxy/api`;
-    
-  console.log("BBB");
 
     try {
       const { email } = await getUser(accessToken);
-      console.log("CCC");
-      const { username, nickname, id } = await getHamsterHubData(auth.user.id);
-      
-  console.log("DDD");
+      const { username, nickname, id, haveRole } = await getHamsterHubData(auth.user.id);
+
+      if (!haveRole) {
+        return discordSdk.close(4001, "คุณไม่มียศ 'แฮมสเตอร์'");
+      }
 
       // window._nickname = nickname;
       // window._username = username;
@@ -134,8 +142,6 @@ setupDiscordSdk().then(async (auth) => {
 
       const loginData = await loginDiscord(id, nickname, username, email);
       window._loginData = JSON.stringify(loginData);
-      
-  console.log("EEE");
 
       // try {
       //   const result = await discordSdk.commands.setActivity({
@@ -171,11 +177,11 @@ setupDiscordSdk().then(async (auth) => {
       // }
     } catch (err) {
       console.error("Background user init failed:", err);
-      console.log("FFF");
     }
+  } else if (auth) {
+    discordSdk.close(4001, "คุณไม่ได้อยู่ในห้อง Hamster Hub");
   } else {
-    discordSdk.close(4001, "User not authorized");
-    console.log("GGG");
+    discordSdk.close(4001, "คุณไม่ได้ยืนยันตัวตน");
   }
 });
 
@@ -205,7 +211,7 @@ createUnityInstance(document.querySelector("#unity-canvas"), {
   // frameworkUrl: "/.proxy/api/build/HamsterMap.framework.js.br",
   // codeUrl: "/.proxy/api/build/HamsterMap.wasm.br",
   streamingAssetsUrl: "StreamingAssets",
-  companyName: "HamsterTown",
+  companyName: "HamsterHub",
   productName: "HamsterMap",
   productVersion: "1.0",
   // matchWebGLToCanvasSize: false, // Uncomment this to separately control WebGL canvas render size and DOM element size.

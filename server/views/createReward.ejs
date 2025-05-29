@@ -18,6 +18,9 @@
             <div class="alert alert-secondary">
                 <label for="exp">Exp Drop</label>
                 <input type="number" id="exp" name="exp" class="form-control" placeholder="100" required />
+                <br>
+                <label for="coin">Coin Drop</label>
+                <input type="number" id="coin" name="coin" class="form-control" placeholder="100" required />
             </div>
             
             <h4>Random Drop</h4>
@@ -80,6 +83,7 @@
 
             const formData = new FormData(form);
             const exp = formData.get("exp");
+            const coin = formData.get("coin");
 
             const itemDrops = new Set();
 
@@ -101,6 +105,7 @@
 
             const payload = {
                 exp,
+                coin,
                 itemDrops: Array.from(itemDrops)
             };
 

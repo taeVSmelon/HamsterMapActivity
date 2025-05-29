@@ -4,7 +4,8 @@ import rewardModel from "../models/reward.js";
 import { itemModel } from "../models/item.js";
 import { LeaderboardService } from "./leaderboardService.js";
 import { InventoryService } from "./inventoryService.js";
-import { stageModel } from "../models/stage.js";
+import { codeStageModel, stageModel } from "../models/stage.js";
+import { OpenAIService, OpenAIException } from "./openAiService.js";
 
 class UserService {
   /**
@@ -77,8 +78,15 @@ class UserService {
         },
         { new: true },
       );
-      
     }
+
+    nowUser = await userModel.findOneAndUpdate(
+      { id: userId },
+      {
+        $inc: { coin: reward.coin }
+      },
+      { new: true }
+    );
 
     // for (const leaderScore in reward.leaderScores) {
     //   await LeaderboardService.addScore(userId, leaderScore.leaderboardId, leaderScore.score)
@@ -98,6 +106,7 @@ class UserService {
     return {
       user: nowUser,
       exp: reward.exp,
+      coin: reward.coin,
       item,
       count
     };
@@ -132,7 +141,22 @@ class UserService {
       throw new UserException("The stage has been cleared");
     }
 
-    let exp = 0, item = null, count = 0;
+    if (stage.type == "CodeStage") {
+      if (stage.realAnswer) {
+        await OpenAIService.checkAnswerWithRealAnswer(
+          stage.description,
+          stage.realAnswer,
+          message
+        );
+      } else {
+        await OpenAIService.checkAnswer(
+          stage.description,
+          message
+        );
+      }
+    }
+
+    let exp = 0, coin = 0, item = null, count = 0;
 
     if (stage.reward) {
       const result = await UserService.getReward(
@@ -141,6 +165,7 @@ class UserService {
       );
 
       exp = result.exp;
+      coin = result.coin;
       item = result.item;
       count = result.count;
     }
@@ -168,6 +193,7 @@ class UserService {
     return {
       rewardId: stage.rewardId,
       exp,
+      coin,
       item,
       count
     };

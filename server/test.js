@@ -1,9 +1,25 @@
-import express from 'express';
-import createBotClient from './bot.js';
+import { OpenAIException, OpenAIService } from './services/openAiService.js';
 
-const app = express();
-createBotClient(app); // ← สำคัญมาก
+async function runCheck() {
+  try {
+    const aiAnswer = await OpenAIService.checkAnswerWithRealAnswer(
+      [
+        {
+          valueType: "text",
+          value: `หาภาพนี้จาก Learn ใน Unity Hub ชื่ออะไร`
+        }
+      ],
+      `Create a 2D Roguelike Game`,
+      `Create a 2D Roguelike Game เป็นคำตอบสุดท้าย`
+    );
+    console.log(`Pass: ${aiAnswer}`);
+  } catch (err) {
+    if (err instanceof OpenAIException) {
+      console.log(err.message);
+    } else {
+      throw err;
+    }
+  }
+}
 
-app.listen(3000, () => {
-  console.log('Server started on port 3000');
-});
+runCheck();

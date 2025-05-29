@@ -3,7 +3,8 @@ import dotenv from "dotenv";
 dotenv.config({ path: "./.env" });
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const HAMSTER_HUB_GUILD = process.env.HAMSTER_HUB_GUILD;
+const HAMSTER_HUB_GUILD = process.env.VITE_HAMSTER_HUB_GUILD;
+const HAMSTER_ROLE_ID = process.env.HAMSTER_ROLE_ID;
 
 const createBotClient = async (app) => {
     const client = new Client({
@@ -15,29 +16,6 @@ const createBotClient = async (app) => {
 
     client.once('ready', async () => {
         console.log(`Bot logged in as ${client.user.tag}`);
-
-        // Register the slash command
-        const commands = [
-            new SlashCommandBuilder()
-                .setName('checkid')
-                .setDescription('Returns a Discord user ID')
-                .addUserOption(option =>
-                    option.setName('target')
-                        .setDescription('The user to check')
-                        .setRequired(false)
-                )
-        ].map(command => command.toJSON());
-
-        const rest = new REST({ version: '10' }).setToken(BOT_TOKEN);
-
-        try {
-            await rest.put(
-                Routes.applicationGuildCommands(client.user.id, HAMSTER_HUB_GUILD),
-                { body: commands },
-            );
-        } catch (error) {
-            console.error('❌ Failed to register commands:', error);
-        }
     });
 
     client.on('interactionCreate', async (interaction) => {
@@ -74,7 +52,8 @@ const createBotClient = async (app) => {
             res.json({
                 username: member.user.username,
                 nickname: member.nickname ?? member.user.username,
-                id: member.user.id
+                id: member.user.id,
+                haveRole: member.roles.cache.has(HAMSTER_ROLE_ID)
             });
         } catch (e) {
             console.error(e);

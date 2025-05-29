@@ -25,6 +25,7 @@ import { itemModel } from "./models/item.js";
 import WsUserData from "./classes/wsUserData.js";
 import { FixedItemId, FixedRewardService, loadAllFixedItem, RewardGroup } from "./services/fixedRewardService.js";
 import FixedReward from "./classes/fixedReward.js";
+import { OpenAIException } from "./services/openAiService.js";
 dotenv.config({ path: "./.env" });
 
 const app = express();
@@ -356,6 +357,10 @@ app.get("/getStages/:worldId", authenticateToken, async (req, res) => {
     stages: world.stages,
     clearedStages: clearedStages
   });
+  // res.status(200).json({
+  //   stages: [],
+  //   clearedStages: clearedStages
+  // });
 });
 
 // app.get("/backoffice", async (req, res) => {
@@ -411,12 +416,19 @@ app.post("/sendStage", authenticateToken, checkIsJson, async (req, res) => {
   const { stageId, startTime, endTime, itemUseds, message } = req.body;
   const userId = req.userId;
 
-  const rewardCollected = await UserService.clearStage(userId, stageId, startTime, endTime, itemUseds, message);
-
-  if (rewardCollected.rewardId) {
-    res.json({ rewardCollected });
-  } else {
-    res.json({ rewardCollected: null });
+  try {
+    const rewardCollected = await UserService.clearStage(userId, stageId, startTime, endTime, itemUseds, message);
+  
+    if (rewardCollected?.rewardId) {
+      res.json({ success: true, rewardCollected });
+    } else {
+      res.json({ success: true, rewardCollected: null });
+    }
+  } catch (err) {
+    if (err instanceof OpenAIException) {
+      return res.json({ success: false, error: err.message })
+    }
+    throw err;
   }
 });
 
