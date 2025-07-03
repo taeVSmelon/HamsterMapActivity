@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
-import mongooseSequence from "mongoose-sequence";
-const AutoIncrement = mongooseSequence(mongoose);
+import AutoIncrement from "../plugins/autoIncrement.js";
 
 const rewardCollectedSchema = new mongoose.Schema(
   {
@@ -11,11 +10,14 @@ const rewardCollectedSchema = new mongoose.Schema(
       index: true
     },
     exp: { type: Number, default: 0 },
+    coin: { type: Number, default: 0 },
     item: { type: mongoose.Types.ObjectId, ref: "Item", default: null },
     itemCount: { type: Number, default: 0 },
   },
   { _id: false }
 );
+
+rewardCollectedSchema.plugin(AutoIncrement, { id: 'reward_collected_id', inc_field: 'id', start_seq: 1000000 });
 
 const clearedStageSchema = new mongoose.Schema(
   {
@@ -25,8 +27,7 @@ const clearedStageSchema = new mongoose.Schema(
     itemUseds: { type: [Number], default: [] },
     message: { type: String, default: null },
     rewardCollected: { type: rewardCollectedSchema, default: null }
-  },
-  { _id: false }
+  }
 );
 
 const equipmentSchema = new mongoose.Schema(
@@ -75,8 +76,19 @@ const statSchema = new mongoose.Schema(
     level: { type: Number, default: 1 },
     maxExp: { type: Number, default: 0 },
     exp: { type: Number, default: 0 },
+    coin: { type: Number, default: 0 },
     maxHealth: { type: Number, default: 100 },
     health: { type: Number, default: 100 },
+    onlineTime: { type: Number, default: 0 },
+    onlineTimeByHour: {
+      type: [Number],
+      default: () => Array(24).fill(0),
+    },
+    collectedStaticRewards: {
+      type: [mongoose.Types.ObjectId],
+      ref: "StaticReward",
+      default: []
+    },
     inventory: {
       type: [inventoryItemSchema],
       default: [],
@@ -98,7 +110,11 @@ const statSchema = new mongoose.Schema(
         type: mongoose.Types.ObjectId,
         ref: "Approve"
       }
-    ]
+    ],
+    completeQuests: {
+      type: [String],
+      default: []
+    }
   },
   { _id: false }
 );
@@ -109,16 +125,19 @@ const statSchema = new mongoose.Schema(
 
 const userSchema = new mongoose.Schema({
   id: { type: Number, unique: true, index: true },
+  profileLink: { type: String, default: null },
   nickname: { type: String, required: true },
   username: { type: String, required: true },
   email: { type: String, default: null },
   friends: { type: [Number], default: [] },
   stats: { type: statSchema, default: {} },
+  afkReward: {
+    afkRewardCount: { type: Number, default: 0 },
+    lastAfkRewardDate: { type: Date, default: null },
+  },
   refreshToken: { type: String, default: null },
   // discordToken: { type: String, default: null }
 });
-
-rewardCollectedSchema.plugin(AutoIncrement, { id: 'reward_collected_id', inc_field: 'id', start_seq: 1000000 });
 
 const userModel = mongoose.model("User", userSchema, "User");
 

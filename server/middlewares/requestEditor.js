@@ -1,9 +1,10 @@
-const removeHiddenKey = (req, res, next) => {
+const removeSecretKey = (req, res, next) => {
     const originalJson = res.json;
 
     res.json = function (data) {
-        const cleanData = removeUnderscoreKeys(JSON.parse(JSON.stringify(data)));
-        return originalJson.call(this, cleanData);
+        const cleanData1 = removeUnderscoreKeys(JSON.parse(JSON.stringify(data)));
+        const cleanData2 = removeSecurityKeys(cleanData1);
+        return originalJson.call(this, cleanData2);
     };
 
     next();
@@ -27,6 +28,24 @@ function removeUnderscoreKeys(obj) {
     return obj;
 }
 
+function removeSecurityKeys(obj) {
+    if (Array.isArray(obj)) {
+        return obj.map(removeSecurityKeys);
+    }
+
+    if (obj && typeof obj === "object") {
+        const cleaned = {};
+        for (const key in obj) {
+            if (key.toLowerCase() !== "password") {
+                cleaned[key] = removeSecurityKeys(obj[key]);
+            }
+        }
+        return cleaned;
+    }
+
+    return obj;
+}
+
 const showRequestLog = (req, res, next) => {
     if (req.path.startsWith('/.well-known')) return next();
     
@@ -40,4 +59,4 @@ const showRequestLog = (req, res, next) => {
     next();
 };
 
-export { removeHiddenKey, showRequestLog };
+export { removeSecretKey, showRequestLog };

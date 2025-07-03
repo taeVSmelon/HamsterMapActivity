@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Create Static Reward</title>
+
+    <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        ::placeholder {
+            font-weight: 300 !important;
+            color: #bbb !important;
+            font-style: italic !important;
+            opacity: 0.4 !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="mb-4">Create Static Reward</h1>
+
+        <form id="static-item-form">
+            <div class="p-0 m-0 row">
+                <div class="col-12">
+                    <label for="reward">Reward Id</label>
+                    <input type="number" class="form-control reward" name="reward" placeholder="1000000" required />
+                </div>
+                <div class="col-12 my-3">
+                    <input class="form-check-input" type="checkbox" id="can-collect-one-time">
+                    <label class="form-check-label" for="can-collect-one-time">Can Collect One Time</label>
+                </div>
+                <div class="col-6">
+                    <label for="position-x" class="form-label">Item Position X</label>
+                    <input type="number" step="any" class="form-control" name="position-x" placeholder="0" required />
+                  </div>
+                  <div class="col-6">
+                    <label for="position-y" class="form-label">Item Position Y</label>
+                    <input type="number" step="any" class="form-control" name="position-y" placeholder="0" required />
+                  </div>
+            </div>
+
+            <button type="submit" class="btn btn-success mt-3">Create</button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById("static-item-form");
+        const canCollectOneTime = document.getElementById("can-collect-one-time");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const rewardId = formData.get("reward");
+            const positionX = Number.parseFloat(formData.get("position-x"));
+            const positionY = Number.parseFloat(formData.get("position-y"));
+            const payload = {
+                rewardId,
+                position: {
+                    x: positionX,
+                    y: positionY
+                },
+                canCollectOneTime: canCollectOneTime.checked
+            };
+
+            const response = await fetch("./staticReward/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            alert(JSON.stringify(result, null, 2));
+        });
+    </script>
+
+    <script src="../bs-5/js/bootstrap.min.js"></script>
+</body>
+
+</html>

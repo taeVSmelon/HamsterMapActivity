@@ -18,14 +18,17 @@ import worldModel from "./models/world.js";
 import { UserService } from "./services/userService.js";
 import leaderboardModel from "./models/leaderboard.js";
 import adminRouter from "./admin.js";
-import { removeHiddenKey, showRequestLog } from "./middlewares/requestEditor.js";
+import { removeSecretKey, showRequestLog } from "./middlewares/requestEditor.js";
 import { InventoryService } from "./services/inventoryService.js";
-import fuseModel from "./models/Fuse.js";
+import fuseModel from "./models/fuse.js";
 import { itemModel } from "./models/item.js";
+import { staticRewardModel } from "./models/staticReward.js";
 import WsUserData from "./classes/wsUserData.js";
 import { FixedItemId, FixedRewardService, loadAllFixedItem, RewardGroup } from "./services/fixedRewardService.js";
 import FixedReward from "./classes/fixedReward.js";
 import { OpenAIException } from "./services/openAiService.js";
+import { stageModel } from "./models/stage.js";
+import setupShop from "./shop.js";
 dotenv.config({ path: "./.env" });
 
 const app = express();
@@ -42,7 +45,7 @@ const fileSizes = new Map();
 app.use(compression());
 
 app.use(showRequestLog);
-app.use(removeHiddenKey);
+app.use(removeSecretKey);
 
 app.use(express.json({ limit: "256mb" }));
 app.set("trust proxy", true);
@@ -59,18 +62,22 @@ app.use('/images', express.static(path.join(__dirname, "server/images"), { fallt
 
 app.use('/build', expressStaticGzip(path.join(__dirname, 'public/Build'), {
   enableBrotli: true,
-  fallthrough: true,
   orderPreference: ['br', 'gz'],
+  fallthrough: false,
   setHeaders: (res, filePath) => {
-    // if (filePath.endsWith('.br')) {
-    //   res.setHeader('Content-Encoding', 'br');
-    // }
+    res.setHeader('Vary', 'Accept-Encoding');
+    
+    if (filePath.endsWith('.br')) {
+      res.setHeader('Content-Encoding', 'br');
+    } else if (filePath.endsWith('.gz')) {
+      res.setHeader('Content-Encoding', 'gzip');
+    }
 
-    if (filePath.endsWith('.wasm') || filePath.endsWith('.wasm.br')) {
+    if (filePath.endsWith('.wasm') || filePath.endsWith('.wasm.br') || filePath.endsWith('.wasm.gz')) {
       res.setHeader('Content-Type', 'application/wasm');
-    } else if (filePath.endsWith('.js') || filePath.endsWith('.js.br')) {
+    } else if (filePath.endsWith('.js') || filePath.endsWith('.js.br') || filePath.endsWith('.js.gz')) {
       res.setHeader('Content-Type', 'application/javascript');
-    } else if (filePath.endsWith('.data') || filePath.endsWith('.data.br')) {
+    } else if (filePath.endsWith('.data') || filePath.endsWith('.data.br') || filePath.endsWith('.data.gz')) {
       res.setHeader('Content-Type', 'application/octet-stream');
     }
 
@@ -152,7 +159,7 @@ app.post("/discordToken", checkIsJson, async (req, res) => {
 });
 
 app.post("/loginDiscord", checkIsJson, async (req, res) => {
-  const { userId, nickname, username, email } = req.body;
+  const { userId, profileLink, nickname, username, email } = req.body;
 
   const user = await userModel.findOne({ id: userId }).lean();
 
@@ -160,6 +167,7 @@ app.post("/loginDiscord", checkIsJson, async (req, res) => {
     try {
       await userModel.create({
         id: userId,
+        profileLink: profileLink,
         nickname,
         username
       });
@@ -178,6 +186,7 @@ app.post("/loginDiscord", checkIsJson, async (req, res) => {
     { userId, refreshToken: refreshToken },
     JWT_SECRET,
     { expiresIn: "1h" },
+    // { expiresIn: "10s" },
   );
 
   const refreshTokenExpiredTime = new Date();
@@ -185,19 +194,17 @@ app.post("/loginDiscord", checkIsJson, async (req, res) => {
 
   const accessTokenExpiredTime = new Date();
   accessTokenExpiredTime.setHours(accessTokenExpiredTime.getHours() + 1);
+  // accessTokenExpiredTime.setSeconds(accessTokenExpiredTime.getSeconds() + 10);
 
-  const refreshTokenExpired = Math.floor(
-    refreshTokenExpiredTime.getTime() / 1000,
-  );
-  const accessTokenExpired = Math.floor(
-    accessTokenExpiredTime.getTime() / 1000,
-  );
+  const refreshTokenExpired = refreshTokenExpiredTime.getTime();
+  const accessTokenExpired = accessTokenExpiredTime.getTime();
 
   await userModel.updateOne(
     { id: userId },
     {
       $set: {
         refreshToken: refreshToken,
+        profileLink: profileLink,
         nickname: nickname,
         username: username,
         email: email
@@ -228,17 +235,17 @@ app.post("/refreshToken", async (req, res) => {
 
     if (nowUser.refreshToken === refreshToken) {
       const accessToken = jwt.sign(
-        { id: nowUser.userId, refreshToken: refreshToken },
+        { userId: nowUser.id, refreshToken: refreshToken },
         JWT_SECRET,
         { expiresIn: "1h" },
+        // { expiresIn: "10s" },
       );
 
       const accessTokenExpiredTime = new Date();
       accessTokenExpiredTime.setHours(accessTokenExpiredTime.getHours() + 1);
+      // accessTokenExpiredTime.setSeconds(accessTokenExpiredTime.getSeconds() + 10);
 
-      const accessTokenExpired = Math.floor(
-        accessTokenExpiredTime.getTime() / 1000,
-      );
+      const accessTokenExpired = accessTokenExpiredTime.getTime();
 
       return res.json({
         accessToken,
@@ -266,13 +273,7 @@ app.get("/profile", authenticateToken, async (req, res) => {
 
   if (!user) return res.status(400).json({ message: "User not found" });
 
-  res.status(200).json({
-    id: user.id,
-    nickname: user.nickname,
-    username: user.username,
-    friends: user.friends,
-    stats: user.stats,
-  });
+  res.status(200).json(user);
 });
 
 app.get("/users/:userId", async (req, res) => {
@@ -351,9 +352,12 @@ app.get("/getStages/:worldId", authenticateToken, async (req, res) => {
 
   if (!user) return res.status(400).json({ message: "User not found" });
 
+  const approves = await approveModel.find({ userId: req.userId }).select("stageId message").lean();
+
   const clearedStages = user.stats.clearedStages;
 
   res.status(200).json({
+    approvingStages: approves,
     stages: world.stages,
     clearedStages: clearedStages
   });
@@ -399,6 +403,8 @@ app.put("/updateHealth", authenticateToken, checkIsJson, async (req, res) => {
 
   if (health <= 0) {
     user.stats.level = Math.max(1, user.stats.level - 1);
+    user.stats.maxExp = ((1.35 ** (user.stats.level - 1)) + 1) * 100;
+    user.stats.maxHealth = ((user.stats.level - 1) * 20) + 100;
     user.stats.health = user.stats.maxHealth;
     await user.save();
   } else {
@@ -436,14 +442,19 @@ app.post("/sendApprove", authenticateToken, checkIsJson, async (req, res) => {
   const { stageId, startTime, endTime, itemUseds, message } = req.body;
   const userId = req.userId;
 
-  const user = await userModel.findOne({ id: req.userId });
+  const user = await userModel.findOne({ id: req.userId }).lean();
 
-  if (!user) return res.status(400).json({ message: "User not found" });
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  const stage = await stageModel.findOne({ id: stageId }).lean();
+
+  if (!stage) return res.status(404).json({ message: "Stage not found" });
 
   try {
     const approve = await approveModel.create({
       nickname: user.nickname,
       userId,
+      stageName: stage.stageName,
       stageId,
       startTime,
       endTime,
@@ -589,12 +600,13 @@ app.post(
 
     const inventory = user.stats.inventory;
 
-    const item1 = inventory.find((i) =>
-      i.item.id.toString() === itemId1
+    const inventoryItem1 = inventory.find((i) =>
+      i.item.id === itemId1
     );
-    const item2 = inventory.find((i) =>
-      i.item.id.toString() === itemId2
-    );
+    const item1 = inventoryItem1?.item;
+    const item2 = inventory.filter(i => i?._id !== inventoryItem1._id).find((i) =>
+      i.item.id === itemId2
+    )?.item;
 
     if (!item1 || !item2) {
       return res.status(404).json({ error: "Item not found" });
@@ -652,16 +664,123 @@ app.post(
   },
 );
 
+app.get(
+  "/item/fuse/results",
+  authenticateToken,
+  async (req, res) => {
+    const { item1: itemId1, item2: itemId2 } = req.query;
+
+    if (!itemId1) {
+      return res.status(400).json({ error: "Json don't have item1 id" });
+    } else if (!itemId2) {
+      return res.status(400).json({ error: "Json don't have item2 id" });
+    }
+
+    const fuse = await fuseModel.findOne({
+      $or: [
+        { item1: itemId1, item2: itemId2 },
+        { item1: itemId2, item2: itemId1 },
+      ],
+    }).lean();
+
+    if (!fuse) {
+      return res.status(404).json({ error: "Can't find fuse result" });
+    }
+
+    const items = await itemModel.find({ id: { $in: fuse.results.map(r => r.itemId) } }).lean();
+
+    return res.json({ results: items });
+  },
+);
+
+app.post(
+  "/item/remove",
+  authenticateToken,
+  checkIsJson,
+  async (req, res) => {
+    const { itemId, count = 1 } = req.body;
+
+    if (!itemId || count <= 0) {
+      return res.status(400).json({ error: "Json don't have item id" });
+    }
+
+    const item = await itemModel.findOne({ id: itemId }).lean();
+
+    if (!item) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+
+    const updatedUser = await InventoryService.removeItem(req.userId, item._id, count);
+
+    return res.json({ user: updatedUser });
+  },
+);
+
+app.post(
+  "/staticReward/collect",
+  authenticateToken,
+  checkIsJson,
+  async (req, res) => {
+    const { collectRewardId, position: {x: posX, y: posY} } = req.body;
+
+    if (posX === undefined || posY === undefined) {
+      return res.status(400).json({ error: "Don't have reward position" });
+    }
+    
+    const user = await userModel
+      .findOne({ id: req.userId })
+      .lean();
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const staticReward = await staticRewardModel
+      .findOne({ id: collectRewardId })
+      .lean();
+
+    if (!staticReward) return res.status(404).json({ error: "Reward not static or reward not found" });
+
+    if (staticReward.canCollectOneTime && user.stats.collectedStaticRewards && user.stats.collectedStaticRewards.some(id => id.equals(staticReward._id))) {
+      return res.status(400).json({ error: "This item was collected in a previous time period" });
+    }
+
+    const dist = Math.hypot(
+      staticReward.rewardPosition.x - posX,
+      staticReward.rewardPosition.y - posY
+    );
+
+    if (dist > 4) {
+      return res.status(400).json({ error: "Too far from item to collect" });
+    }
+
+    await userModel.updateOne(
+      { id: req.userId },
+      { $push: { "stats.collectedStaticRewards": staticReward._id } }
+    );
+
+    const rewardData = await UserService.collectReward(req.userId, staticReward.rewardId);
+    const newUser = rewardData.user;
+    delete rewardData.user;
+
+    return res.json({
+      reward: rewardData,
+      user: newUser
+    });
+  }
+);
+
 app.get("/afk/check", authenticateToken, async (req, res) => {
   const wsUserData = WsUserData.getDataByUserId(req.userId);
 
   if (wsUserData) {
     const rewardData = await wsUserData.checkReward();
 
-    if (rewardData)
+    if (rewardData) {
+      console.log(`Next afk time for ${req.userId}: ${wsUserData.afkRewardTime}`);
       return res.status(200).json({ rewardData, afkRewardTime: wsUserData.afkRewardTime });
-    else
+    } else {
+      console.log(`Wait afk time for ${req.userId}: ${wsUserData.afkRewardTime}`);
       return res.status(200).json({ message: "Wait", afkRewardTime: wsUserData.afkRewardTime });
+    }
   }
 
   return res.status(404).json({ message: "Can't find user websocket" });
@@ -688,7 +807,47 @@ app.get("/gacha/images", authenticateToken, async (req, res) => {
   return res.status(200).json({ imagePaths });
 });
 
+app.post("/quest/complete", authenticateToken, checkIsJson, async (req, res) => {
+  const { questName } = req.body;
+
+  if (!questName) {
+    return res.status(400).json({ error: "Don't have quest name" });
+  }
+
+  const user = await userModel.findOneAndUpdate(
+    { id: req.userId },
+    {
+      $addToSet: {
+        "stats.completeQuests": questName
+      }
+    },
+    { new: true }
+  ).lean();
+
+  return res.json({ completeQuests: user.stats.completeQuests });
+});
+
+app.post("/restoreHealth", authenticateToken, async (req, res) => {
+  const user = await userModel.findOne({ id: req.userId });
+
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  if (user.stats.coin >= 50) {
+    user.stats.coin -= 50;
+    user.stats.health = user.stats.maxHealth;
+    await user.save();
+  } else {
+    return res.status(400).json({ error: "User doesn't have enough coins" });
+  }
+
+  return res.status(200).json({
+    coin: user.stats.coin,
+    health: user.stats.health
+  });
+});
+
 setupWebsocket(adminRouter, server);
+await setupShop(app);
 await createBotClient(app);
 
 app.use(errorHandler);

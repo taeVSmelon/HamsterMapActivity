@@ -7,6 +7,15 @@
     <title>Create Reward</title>
 
     <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        ::placeholder {
+            font-weight: 300 !important;
+            color: #bbb !important;
+            font-style: italic !important;
+            opacity: 0.4 !important;
+        }
+    </style>
 </head>
 
 <body>
@@ -22,25 +31,41 @@
                 <label for="coin">Coin Drop</label>
                 <input type="number" id="coin" name="coin" class="form-control" placeholder="100" required />
             </div>
-            
+
             <h4>Random Drop</h4>
             <div class="alert alert-warning" id="results">
                 <div class="p-0 m-0 result-item">
-                    <label for="item">Item Result Id</label>
-                    <input type="number" class="form-control item" placeholder="100000" required />
-                    <br>
-                    <label for="count">Item Result Count</label>
-                    <input type="number" class="form-control count" min="1" placeholder="1" required />
-                    <br>
-                    <label for="rate">Item Result Rate</label>
-                    <input type="number" class="form-control rate" min="1" placeholder="1" required />
-                    <button type="button" class="btn btn-danger mt-3 delete-result-btn"
-                        onclick="deleteResultItem(this)">Delete</button>
+                    <div class="p-0 m-0 row">
+                        <div class="col-5">
+                            <label for="name">Item Result Name</label>
+                            <input type="text" class="form-control name" disabled />
+                        </div>
+                        <div class="col-5">
+                            <label for="item">Item Result Id</label>
+                            <input type="number" class="form-control item" placeholder="1000000" required />
+                        </div>
+                        <div class="col-2">
+                            <button class="btn btn-primary w-100 h-100 fs-3 search">Search</button>
+                        </div>
+                        <div class="col-5">
+                            <label for="count">Item Result Count</label>
+                            <input type="number" class="form-control count" min="1" placeholder="1" required />
+                        </div>
+                        <div class="col-5">
+                            <label for="rate">Item Result Rate</label>
+                            <input type="number" class="form-control rate" min="1" placeholder="1" required />
+                        </div>
+                        <div class="col-2">
+                            <label for="percent">Percent</label>
+                            <input type="text" class="form-control percent" disabled />
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-danger mt-3 delete-result-btn">Delete</button>
                     <hr class="border border-warning border-2">
                 </div>
             </div>
 
-            <button type="button" class="btn btn-primary me-3" onclick="addResultItem()">Add Result Item</button>
+            <button type="button" class="btn btn-primary me-3 add-result-btn">Add Result Item</button>
             <button type="submit" class="btn btn-success">Create</button>
         </form>
     </div>
@@ -48,7 +73,10 @@
     <script>
         const form = document.getElementById("item-form");
         const resultItemParent = document.querySelector("#results");
+        const addResultButton = document.querySelector(".add-result-btn");
         const resultItemModel = document.querySelector("#results .result-item").cloneNode(true);
+
+        addResultButton.onclick = addResultItem;
 
         function addResultItem() {
             const newResultItem = resultItemModel.cloneNode(true);
@@ -61,19 +89,97 @@
             const resultItems = document.querySelectorAll(".result-item");
 
             if (resultItems.length > 1) {
-                element.parentElement.remove();
+                element.remove();
                 reloadResultItems();
             }
+        }
+
+        function updatePercents() {
+            const resultItems = document.querySelectorAll(".result-item");
+            let totalRate = 0;
+
+            resultItems.forEach(item => {
+                const rateInput = item.querySelector(".rate");
+                const rate = parseFloat(rateInput?.value || 0);
+                if (!isNaN(rate)) {
+                    totalRate += rate;
+                }
+            });
+
+            resultItems.forEach(item => {
+                const rateInput = item.querySelector(".rate");
+                const percentInput = item.querySelector(".percent");
+                const rate = parseFloat(rateInput?.value || 0);
+
+                if (!isNaN(rate) && totalRate > 0) {
+                    const percent = ((rate / totalRate) * 100).toFixed(1);
+                    percentInput.value = percent + "%";
+                } else {
+                    percentInput.value = "0%";
+                }
+            });
+        }
+
+        function attachSearchHandlers() {
+            const resultItems = document.querySelectorAll(".result-item");
+
+            resultItems.forEach(resultItem => {
+                const searchButton = resultItem.querySelector(".search");
+                if (searchButton) {
+                    searchButton.type = "button";
+
+                    searchButton.onclick = async () => {
+                        const itemIdInput = resultItem.querySelector(".item");
+                        const nameInput = resultItem.querySelector(".name");
+                        const itemId = itemIdInput.value;
+
+                        if (!itemId || isNaN(itemId)) {
+                            nameInput.value = "(Invalid ID)";
+                            return;
+                        }
+
+                        try {
+                            const response = await fetch(`./item/${itemId}`);
+                            if (response.ok) {
+                                const itemData = await response.json();
+                                nameInput.value = itemData.item.name;
+                            } else {
+                                nameInput.value = "(Unnamed Item)";
+                            }
+                        } catch (err) {
+                            nameInput.value = "(Item not found)";
+                        }
+                    };
+                }
+            });
         }
 
         function reloadResultItems() {
             const resultItems = document.querySelectorAll(".result-item");
 
-            if (resultItems.length > 1) {
-                resultItems.forEach(resultItem => resultItem.querySelector(".delete-result-btn")?.classList?.remove("d-none"));
-            } else {
-                resultItems.forEach(resultItem => resultItem.querySelector(".delete-result-btn")?.classList?.add("d-none"));
-            }
+            resultItems.forEach(resultItem => {
+                const deleteResultButton = resultItem.querySelector(".delete-result-btn");
+
+                if (deleteResultButton) {
+                    if (resultItems.length > 1) {
+                        deleteResultButton.classList.remove("d-none");
+                        deleteResultButton.onclick = () => deleteResultItem(resultItem);
+                    } else {
+                        deleteResultButton.classList.add("d-none");
+                        deleteResultButton.onclick = null;
+                    }
+                }
+
+                const oldRateInput = resultItem.querySelector(".rate");
+                if (oldRateInput) {
+                    const newRateInput = oldRateInput.cloneNode(true);
+                    newRateInput.addEventListener("input", updatePercents);
+                    oldRateInput.parentNode.replaceChild(newRateInput, oldRateInput);
+                }
+            });
+
+            attachSearchHandlers();
+            updatePercents();
         }
 
         reloadResultItems();

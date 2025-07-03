@@ -12,6 +12,13 @@
         img#itemIcon {
             max-width: 300px;
         }
+
+        ::placeholder {
+            font-weight: 300 !important;
+            color: #bbb !important;
+            font-style: italic !important;
+            opacity: 0.4 !important;
+        }
     </style>
 </head>
 
@@ -36,30 +43,57 @@
                 <img id="itemIcon" src="#" alt="Preview" class="img-thumbnail" style="display: none;">
                 <br>
                 <br>
-                <label for="itemName">Item Name</label>
-                <input type="text" id="itemName" name="itemName" class="form-control" placeholder="เกลือ" required />
+                <div class="row">
+                    <div class="col-6">
+                        <label for="itemName">Item Name</label>
+                        <input type="text" id="itemName" name="itemName" class="form-control" placeholder="เกลือ"
+                            required />
+                    </div>
+                    <div class="col-6">
+                        <label for="itemRank">Item Rank</label>
+                        <select id="itemRank" name="itemRank" class="form-select" required>
+                            <% for (let i=0; i < itemRanks.length; i++) { const itemRank=itemRanks[i]; if (i===0) { %>
+                                <option value="<%= itemRank %>" selected>
+                                    <%= itemRank %>
+                                </option>
+                                <% } else { %>
+                                    <option value="<%= itemRank %>">
+                                        <%= itemRank %>
+                                    </option>
+                                    <% } } %>
+                        </select>
+                    </div>
+                </div>
                 <br>
                 <label for="itemDescription">Item Description</label>
-                <input type="text" id="itemDescription" name="itemDescription" class="form-control" placeholder="เค็ม"
-                    required />
+                <textarea id="itemDescription" name="itemDescription" class="form-control" placeholder="เค็ม" rows="3"
+                    required></textarea>
                 <br>
                 <label for="canStack">Can Stack</label>
                 <input type="checkbox" id="canStack" class="form-check-input" checked />
                 <br>
-                <label for="canBuy">Can Buy</label>
-                <input type="checkbox" id="canBuy" class="form-check-input" checked />
                 <br>
-                <label for="buyPrice">Buy Price</label>
-                <input type="number" id="buyPrice" name="buyPrice" class="form-control" placeholder="123" value="0" required />
-                <br>
-                <label for="canSell">Can Sell</label>
-                <input type="checkbox" id="canSell" class="form-check-input" checked />
-                <br>
-                <label for="sellPrice">Sell Price</label>
-                <input type="number" id="sellPrice" name="sellPrice" class="form-control" placeholder="123" value="0" required />
-                <br>
+                <div class="row">
+                    <div class="col col-6">
+                        <label for="canBuy">Can Buy</label>
+                        <input type="checkbox" id="canBuy" class="form-check-input" checked />
+                        <br>
+                        <label for="buyPrice">Buy Price</label>
+                        <input type="number" id="buyPrice" name="buyPrice" class="form-control" placeholder="123"
+                            value="0" required />
+                    </div>
+                    <div class="col col-6">
+                        <label for="canSell">Can Sell</label>
+                        <input type="checkbox" id="canSell" class="form-check-input" checked />
+                        <br>
+                        <label for="sellPrice">Sell Price</label>
+                        <input type="number" id="sellPrice" name="sellPrice" class="form-control" placeholder="123"
+                            value="0" required />
+                    </div>
+                </div>
 
                 <div id="CoreItem" class="mt-3 d-none item">
+                    <hr>
                     <label for="health">Health</label>
                     <input type="number" id="health" name="health" class="form-control" placeholder="100" step="0.01" />
                     <br>
@@ -68,25 +102,36 @@
                 </div>
 
                 <div id="VoidItem" class="mt-3 d-none item">
+                    <hr>
                     <label for="voidPrefabName">Void Prefab Name</label>
                     <input type="text" id="voidPrefabName" name="voidPrefabName" class="form-control"
                         placeholder="เกลือ" />
                     <br>
-                    <label for="minDamage">Min Damage</label>
-                    <input type="number" id="minDamage" name="minDamage" class="form-control" placeholder="5"
-                        step="0.01" />
+                    <div class="row">
+                        <div class="col col-6">
+                            <label for="minDamage">Min Damage</label>
+                            <input type="number" id="minDamage" name="minDamage" class="form-control" placeholder="5"
+                                step="0.01" />
+                        </div>
+                        <div class="col col-6">
+                            <label for="maxDamage">Max Damage</label>
+                            <input type="number" id="maxDamage" name="maxDamage" class="form-control" placeholder="20"
+                                step="0.01" />
+                        </div>
+                    </div>
                     <br>
-                    <label for="maxDamage">Max Damage</label>
-                    <input type="number" id="maxDamage" name="maxDamage" class="form-control" placeholder="20"
-                        step="0.01" />
-                    <br>
-                    <label for="minSpeed">Min Speed</label>
-                    <input type="number" id="minSpeed" name="minSpeed" class="form-control" placeholder="0.5"
-                        step="0.01" />
-                    <br>
-                    <label for="maxSpeed">Max Speed</label>
-                    <input type="number" id="maxSpeed" name="maxSpeed" class="form-control" placeholder="1.5"
-                        step="0.01" />
+                    <div class="row">
+                        <div class="col col-6">
+                            <label for="minSpeed">Min Speed</label>
+                            <input type="number" id="minSpeed" name="minSpeed" class="form-control" placeholder="0.5"
+                                step="0.01" />
+                        </div>
+                        <div class="col col-6">
+                            <label for="maxSpeed">Max Speed</label>
+                            <input type="number" id="maxSpeed" name="maxSpeed" class="form-control" placeholder="1.5"
+                                step="0.01" />
+                        </div>
+                    </div>
                     <br>
                     <label for="chargeTime">Charge Time</label>
                     <input type="number" id="chargeTime" name="chargeTime" class="form-control" placeholder="1.2"
@@ -103,7 +148,7 @@
                     <hr>
                     <h5>Skills</h5>
                     <div id="skills-container"></div>
-                    <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addSkill()">+ Add
+                    <button id="add-skill-btn" type="button" class="btn btn-outline-primary btn-sm mt-2">+ Add
                         Skill</button>
                 </div>
             </div>
@@ -121,6 +166,9 @@
         const canBuy = document.querySelector("#canBuy");
         const canSell = document.querySelector("#canSell");
         const skillOptions = '<%= skillTypes %>'.split(",");
+        const addSkillButton = document.getElementById("add-skill-btn");
+
+        addSkillButton.onclick = addSkill;
 
         setIconInput.addEventListener('change', function () {
             const file = this.files[0];
@@ -158,6 +206,7 @@
                 const formData = new FormData(form);
                 const name = formData.get("itemName");
                 const description = formData.get("itemDescription");
+                const rank = formData.get("itemRank");
                 const buyPrice = formData.get("buyPrice");
                 const sellPrice = formData.get("sellPrice");
                 const health = formData.get("health");
@@ -185,6 +234,7 @@
                     iconPath,
                     name,
                     description,
+                    rank,
                     canStack: canStack.checked,
                     canBuy: canBuy.checked,
                     buyPrice,

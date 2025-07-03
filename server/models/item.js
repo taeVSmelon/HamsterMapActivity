@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
-import mongooseSequence from "mongoose-sequence";
-const AutoIncrement = mongooseSequence(mongoose);
+import AutoIncrement from "../plugins/autoIncrement.js";
 
 const skillTypes = [
   "Breakable",
@@ -11,6 +10,17 @@ const skillTypes = [
   "Needle",
   "Slow Down",
   "Titan Size"
+];
+
+const itemRanks = [
+  "-",
+  "G",
+  "F",
+  "E",
+  "D",
+  "C",
+  "B",
+  "A"
 ];
 
 const itemSchema = new mongoose.Schema(
@@ -31,6 +41,11 @@ const itemSchema = new mongoose.Schema(
     description: {
       type: String,
       default: null,
+    },
+    rank: {
+      type: String,
+      enum: itemRanks,
+      default: "-",
     },
     canStack: {
       type: Boolean,
@@ -64,6 +79,10 @@ const fixedItemSchema = new mongoose.Schema({
 });
 
 const coreItemSchema = new mongoose.Schema({
+  level: {
+    type: Number,
+    default: 0,
+  },
   health: {
     type: Number,
     required: true,
@@ -75,6 +94,10 @@ const coreItemSchema = new mongoose.Schema({
 });
 
 const voidItemSchema = new mongoose.Schema({
+  level: {
+    type: Number,
+    default: 0,
+  },
   voidPrefabName: {
     type: String,
     required: true,
@@ -131,4 +154,4 @@ const fixedItemModel = itemModel.discriminator("FixedItem", fixedItemSchema, "Fi
 const coreItemModel = itemModel.discriminator("CoreItem", coreItemSchema, "CoreItem");
 const voidItemModel = itemModel.discriminator("VoidItem", voidItemSchema, "VoidItem");
 
-export { itemModel, fixedItemModel, coreItemModel, voidItemModel, skillTypes };
+export { itemModel, fixedItemModel, coreItemModel, voidItemModel, skillTypes, itemRanks };

@@ -9,13 +9,16 @@ const RewardGroup = {
 };
 
 const FixedItemId = {
+    UPGRADE_STONE_I: "UpgradeStoneI",
+    UPGRADE_STONE_II: "UpgradeStoneII",
+    UPGRADE_STONE_III: "UpgradeStoneIII",
     GACHA_TICKET_SCRAP: "GachaTicketScrap",
     GACHA_TICKET: "GachaTicket",
-    DISCOUNT_STARWAYS_SCRAP: "DiscountStarwaysScrap",
+    // DISCOUNT_STARWAYS_SCRAP: "DiscountStarwaysScrap",
     DISCOUNT_STARWAYS: "DiscountStarways",
-    HAMSTER_COIN: "HamsterCoin",
+    HAMSTER_COIN_FRAGMENT: "HamsterCoinFragment",
     HAMSTER_BALL: "HamsterBall",
-    GAME_300_BATH: "Game300Bath",
+    // GAME_300_BATH: "Game300Bath",
     VOUCHER_300_BATH: "Voucher300Bath",
     SPECIAL_QUEST: "SpecialQuest",
     BOSS_FIGHT_CARD: "BossFightCard",
@@ -24,20 +27,24 @@ const FixedItemId = {
 };
 
 const loadAllFixedItem = async () => {
+    await FixedReward.addNewItem(FixedItemId.UPGRADE_STONE_I, "NPC.png", "Upgrade Stone I");
+    await FixedReward.addNewItem(FixedItemId.UPGRADE_STONE_II, "NPC.png", "Upgrade Stone II");
+    await FixedReward.addNewItem(FixedItemId.UPGRADE_STONE_III, "NPC.png", "Upgrade Stone III");
+
     await FixedReward.addNewItem(FixedItemId.GACHA_TICKET, "NPC.png", "Gacha Ticket");
     await FixedReward.addNewItem(FixedItemId.DISCOUNT_STARWAYS, "NPC.png", "ส่วนลด Starways");
 
-    await FixedReward.addNewRandomItem(FixedItemId.HAMSTER_COIN, "NPC.png", "Hamster Coins", 80, RewardGroup.AFK_REWARD);
+    await FixedReward.addNewRandomItem(FixedItemId.HAMSTER_COIN_FRAGMENT, "HamsterCoinFragment.png", "Hamster Coin Fragments", 82, RewardGroup.AFK_REWARD);
     await FixedReward.addNewRandomItem(FixedItemId.VOID_ITEM, "NPC.png", "Free Random Void", 10, RewardGroup.AFK_REWARD);
     await FixedReward.addNewRandomItem(FixedItemId.GACHA_TICKET_SCRAP, "NPC.png", "Gacha Ticket Scrap", 7, RewardGroup.AFK_REWARD);
-    await FixedReward.addNewRandomItem(FixedItemId.GAME_300_BATH, "NPC.png", "Free Game (max 300 bath)", 1, RewardGroup.AFK_REWARD);
-    await FixedReward.addNewRandomItem(FixedItemId.HAMSTER_BALL, "NPC.png", "Hamster Balls", 1, RewardGroup.AFK_REWARD);
-    await FixedReward.addNewRandomItem(FixedItemId.DISCOUNT_STARWAYS_SCRAP, "NPC.png", "เศษชิ้นส่วนของส่วนลด Starways", 1, RewardGroup.AFK_REWARD);
+    // await FixedReward.addNewRandomItem(FixedItemId.GAME_300_BATH, "NPC.png", "Free Game (max 300 bath)", 1, RewardGroup.AFK_REWARD);
+    await FixedReward.addNewRandomItem(FixedItemId.HAMSTER_BALL, "HamsterBall.png", "Hamster Balls", 1, RewardGroup.AFK_REWARD);
+    // await FixedReward.addNewRandomItem(FixedItemId.DISCOUNT_STARWAYS_SCRAP, "NPC.png", "เศษชิ้นส่วนของส่วนลด Starways", 1, RewardGroup.AFK_REWARD);
 
-    await FixedReward.addNewRandomItem(FixedItemId.HAMSTER_COIN, "NPC.png", "Hamster Coin", 70, RewardGroup.GACHA);
+    await FixedReward.addNewRandomItem(FixedItemId.HAMSTER_COIN_FRAGMENT, "HamsterCoinFragment.png", "Hamster Coin Fragments", 70, RewardGroup.GACHA);
     await FixedReward.addNewRandomItem(FixedItemId.SPECIAL_QUEST, "NPC.png", "Special Quest", 15, RewardGroup.GACHA);
     await FixedReward.addNewRandomItem(FixedItemId.VOID_ITEM, "NPC.png", "Free Random Void", 9, RewardGroup.GACHA);
-    await FixedReward.addNewRandomItem(FixedItemId.HAMSTER_BALL, "NPC.png", "Hamster Balls", 2, RewardGroup.GACHA);
+    await FixedReward.addNewRandomItem(FixedItemId.HAMSTER_BALL, "HamsterBall.png", "Hamster Balls", 2, RewardGroup.GACHA);
     await FixedReward.addNewRandomItem(FixedItemId.VOUCHER_300_BATH, "NPC.png", "Voucher 100 Bath", 2, RewardGroup.GACHA);
     await FixedReward.addNewRandomItem(FixedItemId.BOSS_FIGHT_CARD, "NPC.png", "บัตรเข้าเล่น Boss Fight", 1, RewardGroup.GACHA);
     await FixedReward.addNewRandomItem(FixedItemId.HAMS_TALK, "NPC.png", "บัตรเข้าฟัง HamsTalk", 1, RewardGroup.GACHA);
@@ -65,14 +72,14 @@ class FixedRewardService {
         let rewardItemCount = 0;
 
         switch (fixedReward.id) {
-            case FixedItemId.HAMSTER_COIN:
-                const hamsterCoin = await FixedReward.getItemObject(FixedItemId.HAMSTER_COIN);
+            case FixedItemId.HAMSTER_COIN_FRAGMENT:
+                const hamsterCoin = await FixedReward.getItemObject(FixedItemId.HAMSTER_COIN_FRAGMENT);
 
                 rewardItem = hamsterCoin;
                 
                 switch (rewardGroup) {
                     case RewardGroup.AFK_REWARD:
-                        rewardItemCount = Math.floor(Math.random() * 4) + 1
+                        rewardItemCount = Math.floor(Math.random() * 2) + 1
                         break
                         
                     case RewardGroup.GACHA:
@@ -85,8 +92,10 @@ class FixedRewardService {
                 break;
 
             case FixedItemId.VOID_ITEM:
-                const voidItems = await voidItemModel.find().lean();
-
+                const voidItems = await voidItemModel.find({
+                    rank: { $in: ["G", "F"] }
+                }).lean();
+                
                 if (voidItems.length === 0) break;
 
                 const voidItem = voidItems[Math.floor(Math.random() * voidItems.length)];

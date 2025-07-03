@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
-import mongooseSequence from "mongoose-sequence";
-const AutoIncrement = mongooseSequence(mongoose);
+import AutoIncrement from "../plugins/autoIncrement.js";
 
 const worldSchema = new mongoose.Schema(
     {

@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Item List</title>
+  <title>World List</title>
 
   <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet">
 
@@ -16,10 +16,11 @@
 </head>
 
 <body>
-  <div class="container">
+  <div class="container-xl">
     <h1 class="mb-4">World List</h1>
 
-    <% data.forEach(world=> { %>
+    <% data=data.sort((a, b)=> a.id - b.id);
+      data.forEach(world=> { %>
       <button class="row alert alert-link w-100 fs-4 fw-normal text-dark align-items-center mb-4 p-4" type="button"
         data-bs-toggle="collapse" data-bs-target="#world-<%=world.id %>" aria-expanded="false" aria-controls="moreInfo">
         <p class="col p-0 m-0 col-3">
@@ -33,16 +34,85 @@
 
       <div class="collapse mt-3" id="world-<%=world.id %>">
         <div class="card card-body">
+        <div class="row px-5 py-3 fs-3 align-items-center fw-bold alert alert-secondary">
+            <p class="col col-2 p-0 m-0">Id</p>
+            <p class="col col-5 p-0 m-0">Stage Name</p>
+            <p class="col col-3 p-0 m-0">Reward</p>
+            <p class="col col-2 p-0 m-0">Options</p>
+        </div>
           <% world.stages.forEach(stage=> { %>
             <div class="row fs-5 pb-2 mx-3">
-              <p class="col col-2 text-center p-0 m-0">
+              <p class="col col-2 p-0 m-0">
                 <%=stage.id %>
               </p>
-              <p class="col col-8 p-0 m-0">
-                <%=stage.stageName %>
-              </p>
-              <button type="button" class="btn btn-danger col col-2"
-                onclick="deleteStage('<%=world.id %>', '<%=stage.id %>')">Delete</button>
+                <p class="col col-5 p-0 m-0">
+                  <%=stage.stageName %>
+                </p>
+              <% if (stage.reward) { %>
+                <p class="col col-3 p-0 m-0">
+                  <%=stage.reward.id %>
+                </p>
+                  <% } %>
+
+                    <% if (stage.type==='CombatStage' ) { %>
+                      <button class="btn btn-sm btn-outline-primary col col-1" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#stage-<%=stage.id%>-details" aria-expanded="false"
+                        aria-controls="stage-<%=stage.id%>-details">
+                        Show Data
+                      </button>
+
+                      <button type="button" name="delete-stage-btn" class="btn btn-danger col col-1"
+                        data-world-id="<%=world.id %>" data-stage-id="<%=stage.id %>">Delete</button>
+                      <% } else { %>
+                        <button type="button" name="delete-stage-btn" class="btn btn-danger col col-2"
+                          data-world-id="<%=world.id %>" data-stage-id="<%=stage.id %>">Delete</button>
+                        <% } %>
+
+                          <% if (stage.type==='CombatStage' ) { %>
+                            <div class="collapse mb-3" id="stage-<%=stage.id%>-details">
+                              <div class="card card-body bg-light">
+                                <p>
+                                  <%= stage.dungeon.waves.length %> Waves
+                                </p>
+
+                                <% if (stage.dungeon.waves.length> 0) { %>
+                                  <hr>
+                                  <% } %>
+
+                                    <% stage.dungeon.waves.forEach((wave, waveIndex)=> { %>
+                                      <div class="mb-3">
+                                        <h5>Wave <%= waveIndex + 1 %>
+                                        </h5>
+
+                                        <% if (wave.enemySpawnDatas && wave.enemySpawnDatas.length> 0) { %>
+                                          <ul class="mb-1">
+                                            <% wave.enemySpawnDatas.forEach(spawn=> { %>
+                                              <li><strong>
+                                                  <%= spawn.enemyPrefabName %>
+                                                </strong> x<%= spawn.count %>
+                                              </li>
+                                              <% }); %>
+                                          </ul>
+                                          <% } else { %>
+                                            <p class="text-muted">No enemy spawns in this wave.</p>
+                                            <% } %>
+
+                                              <% if (wave.bossPrefabName) { %>
+                                                <p class="mb-1"><strong>Boss:</strong>
+                                                  <%= wave.bossPrefabName %>
+                                                </p>
+                                                <% if (wave.bossPosition) { %>
+                                                  <p class="mb-1">Position: (<%= wave.bossPosition.x %>, <%=
+                                                        wave.bossPosition.y %>)</p>
+                                                  <% } else { %>
+                                                    <p class="mb-1 text-muted">No boss position specified</p>
+                                                    <% } %>
+                                                      <% } %>
+                                      </div>
+                                      <% }); %>
+                              </div>
+                            </div>
+                            <% } %>
             </div>
             <% }) %>
 
@@ -56,9 +126,19 @@
   </div>
 
   <script>
+    const deleteStageButtons = document.getElementsByName("delete-stage-btn");
+
+    deleteStageButtons.forEach(deleteStageButton => {
+      deleteStageButton.onclick = () => deleteStage(deleteStageButton.getAttribute("data-world-id"), deleteStageButton.getAttribute("data-stage-id"));
+    })
+
     async function deleteStage(worldId, stageId) {
       worldId = Number.parseInt(worldId);
       stageId = Number.parseInt(stageId);
+
+      const confirmed = window.confirm(`Are you sure you want to delete stage ID ${stageId}?`);
+
+      if (!confirmed) return; // ถ้าไม่ตกลงก็หยุด
 
       const response = await fetch(`./world/${worldId}/stage/${stageId}/delete`, {
         method: "DELETE",

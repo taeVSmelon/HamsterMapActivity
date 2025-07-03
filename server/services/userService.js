@@ -15,24 +15,17 @@ class UserService {
    * @returns {Promise<object>} - คืนค่า user ที่อัปเดตแล้ว
    * @throws {UserException} - หาก userId หรือ rewardId ไม่ถูกต้อง
    */
-  static async getReward(userId, rewardId) {
+  static async collectReward(userId, rewardId) {
     let nowUser = await userModel.findOne({ id: userId });
     if (!nowUser) throw new UserException("User not found", 404);
 
     const reward = await rewardModel.findOne({ id: rewardId }).lean();
     if (!reward) throw new UserException("Reward not found", 404);
 
-    const allRate = reward.itemDrops.map((itemDrop) => itemDrop.rate).reduce(
-      (sum, rate) => sum + rate,
-      0,
-    );
-
-    if (allRate <= 0) {
-      return new UserException("Can't find item result");
-    }
+    const allRate = reward.itemDrops.reduce((sum, itemDrop) => sum + itemDrop.rate, 0);
+    if (allRate <= 0) throw new UserException("Can't find item result");
 
     let rateRandom = Math.floor(Math.random() * allRate) + 1;
-
     let item;
     let count;
 
@@ -41,56 +34,40 @@ class UserService {
       if (rateRandom <= 0) {
         count = itemDrop.count;
         item = await itemModel.findOne({ id: itemDrop.itemId });
-        nowUser = await InventoryService.addItem(
-          userId,
-          item._id,
-          count,
-        );
+        nowUser = await InventoryService.addItem(userId, item._id, count);
         break;
       }
     }
 
-    let changedLevel = false;
+    // เพิ่ม EXP และคำนวณเลเวลใหม่
     let nowLevel = nowUser.stats.level;
-    let nowExp = nowUser.stats.exp;
+    let nowExp = nowUser.stats.exp + reward.exp;
+    let changedLevel = false;
 
-    nowExp += reward.exp;
-
-    while (nowExp > ((1.35 ** (nowLevel - 1)) + 1) * 100) {
+    while (nowExp >= ((1.35 ** (nowLevel - 1)) + 1) * 100) {
       nowExp -= ((1.35 ** (nowLevel - 1)) + 1) * 100;
-      nowLevel += 1;
+      nowLevel++;
       changedLevel = true;
     }
 
-    if (changedLevel) {
-      const updateFields = {};
+    // สร้าง fields ที่จะ update
+    const updateFields = {
+      "stats.exp": nowExp,
+      "stats.coin": (nowUser.stats.coin || 0) + reward.coin,
+    };
 
-      updateFields["stats.maxHealth"] = ((nowLevel - 1) * 20) + 100;
-      updateFields["stats.health"] = updateFields["stats.maxHealth"];
+    if (changedLevel) {
       updateFields["stats.level"] = nowLevel;
       updateFields["stats.maxExp"] = ((1.35 ** (nowLevel - 1)) + 1) * 100;
-      updateFields["stats.exp"] = nowExp;
-
-      nowUser = await userModel.findOneAndUpdate(
-        { id: userId },
-        {
-          $set: updateFields,
-        },
-        { new: true },
-      );
+      updateFields["stats.maxHealth"] = ((nowLevel - 1) * 20) + 100;
+      updateFields["stats.health"] = updateFields["stats.maxHealth"];
     }
 
     nowUser = await userModel.findOneAndUpdate(
       { id: userId },
-      {
-        $inc: { coin: reward.coin }
-      },
+      { $set: updateFields },
       { new: true }
     );
-
-    // for (const leaderScore in reward.leaderScores) {
-    //   await LeaderboardService.addScore(userId, leaderScore.leaderboardId, leaderScore.score)
-    // }
 
     if (nowUser instanceof userModel) {
       nowUser = (await nowUser.populate([
@@ -133,15 +110,15 @@ class UserService {
       .lean();
     if (!stage) throw new UserException("Stage not found", 404);
 
-    if (
-      user.stats.clearedStages.find((c) =>
+    if (stage.type == "CodeStage" &&
+      user.stats.clearedStages.some(c =>
         c.stageId.toString() === stageId.toString()
       )
     ) {
       throw new UserException("The stage has been cleared");
     }
 
-    if (stage.type == "CodeStage") {
+    if (stage.type == "CodeStage" && !stage.haveApprove) {
       if (stage.realAnswer) {
         await OpenAIService.checkAnswerWithRealAnswer(
           stage.description,
@@ -159,7 +136,7 @@ class UserService {
     let exp = 0, coin = 0, item = null, count = 0;
 
     if (stage.reward) {
-      const result = await UserService.getReward(
+      const result = await UserService.collectReward(
         userId,
         stage.reward.id,
       );
@@ -171,7 +148,10 @@ class UserService {
     }
 
     await userModel.updateOne(
-      { id: userId },
+      {
+        id: userId,
+        "stats.clearedStages.stageId": { $ne: stageId }
+      },
       {
         $push: {
           "stats.clearedStages": {
@@ -182,6 +162,7 @@ class UserService {
             message,
             rewardCollected: {
               exp,
+              coin,
               item: item?._id,
               itemCount: count
             }
@@ -191,7 +172,7 @@ class UserService {
     );
 
     return {
-      rewardId: stage.rewardId,
+      rewardId: stage.reward?.id,
       exp,
       coin,
       item,

@@ -56,7 +56,7 @@
 
             <h3>Whitelists</h3>
             <div id="whitelist-container"></div>
-            <button type="button" class="btn btn-primary" onclick="addWhitelist()">Add Whitelist</button>
+            <button id="add-whitelist-btn" type="button" class="btn btn-primary">Add Whitelist</button>
 
             <hr class="border border-black border-2">
 
@@ -65,7 +65,10 @@
     </div>
 
     <script>
+        const addWhitelistButton = document.getElementById("add-whitelist-btn");
         const form = document.getElementById("world-form");
+
+        addWhitelistButton.onclick = addWhitelist;
 
         function addWhitelist() {
             const container = document.getElementById("whitelist-container");

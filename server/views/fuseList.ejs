@@ -16,27 +16,40 @@
 </head>
 
 <body>
-    <div class="container">
+    <div class="container-xl">
         <h1 class="mb-4">Fuse List</h1>
 
         <div class="row px-5 py-3 fs-3 align-items-center fw-bold alert alert-dark">
             <p class="col col-3 p-0 m-0">Item 1</p>
+            <p class="col col-1 p-0 m-0">+</p>
             <p class="col col-3 p-0 m-0">Item 2</p>
-            <p class="col col-6 p-0 m-0">Results</p>
+            <p class="col col-1 p-0 m-0">=</p>
+            <p class="col col-4 p-0 m-0">Results</p>
         </div>
 
         <div class="m-0 p-0">
-            <% data.forEach(item=> { %>
+            <% data=data.sort((a, b)=> a.id - b.id);
+                data.forEach(item=> {
+                item.results = item.results.sort((a, b) => a.rate - b.rate);
+                const totalRate = item.results.reduce((sum, drop)=> sum + parseFloat(drop.rate || 0), 0); %>
                 <div class="row px-5 py-3 fs-5 align-items-center alert alert-secondary">
-                    <p class="col col-3 p-0 m-0" id="id">
-                        <%= item.item1 %>
+                    <p class="col col-3 p-0 m-0" id="item1">
+                        <%= item.item1.itemName %> (<%= item.item1.id %>)
                     </p>
-                    <p class="col col-3 p-0 m-0" id="name">
-                        <%= item.item2 %>
+                    <p class="col col-1 p-0 m-0" id="plus">
+                        +
                     </p>
-                    <div class="col col-6 p-0 m-0" id="description">
-                        <% item.results.forEach(result=> { %>
-                            <p class="p-0 m-0">ID: <%= result.itemId %>, Rate: <%= result.rate %>
+                    <p class="col col-3 p-0 m-0" id="item2">
+                        <%= item.item2.itemName %> (<%= item.item2.id %>)
+                    </p>
+                    <p class="col col-1 p-0 m-0" id="equal">
+                        =
+                    </p>
+                    <div class="col col-4 p-0 m-0" id="results">
+                        <% item.results.forEach(result=> {
+                            result.percent = totalRate > 0 ? ((result.rate / totalRate) * 100).toFixed(1) : "0";%>%>
+                            <p class="p-0 m-0">
+                                <%= result.itemName %> (<%= result.itemId %>) x1 [<%= result.percent %>%]
                             </p>
                             <% }); %>
                     </div>

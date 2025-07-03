@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Item List</title>
+    <title>Reward List</title>
 
     <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet">
 
@@ -16,28 +16,37 @@
 </head>
 
 <body>
-    <div class="container">
-        <h1 class="mb-4">Item List</h1>
+    <div class="container-xl">
+        <h1 class="mb-4">Reward List</h1>
 
         <div class="row px-5 py-3 fs-3 align-items-center fw-bold  alert alert-dark">
-            <p class="col col-4 p-0 m-0">ID</p>
-            <p class="col col-4 p-0 m-0">Exp</p>
-            <p class="col col-4 p-0 m-0">Item Drops</p>
+            <p class="col col-2 p-0 m-0">ID</p>
+            <p class="col col-2 p-0 m-0">Exp</p>
+            <p class="col col-2 p-0 m-0">Coin</p>
+            <p class="col col-6 p-0 m-0">Item Drops</p>
         </div>
 
         <div class="m-0 p-0">
-            <% data.forEach(item=> { %>
+            <% data=data.sort((a, b)=> a.id - b.id);
+                data.forEach(item=> {
+                item.itemDrops = item.itemDrops.sort((a, b) => a.rate - b.rate);
+                const totalRate = item.itemDrops.reduce((sum, drop)=> sum + parseFloat(drop.rate || 0), 0); %>
                 <div class="row px-5 py-3 mb-4 fs-5 align-items-center alert alert-secondary">
-                    <p class="col col-4 p-0 m-0" id="id">
+                    <p class="col col-2 p-0 m-0" id="id">
                         <%= item.id %>
                     </p>
-                    <p class="col col-4 p-0 m-0" id="exp">
+                    <p class="col col-2 p-0 m-0" id="exp">
                         <%= item.exp %>
                     </p>
-                    <div class="col col-4 p-0 m-0" id="itemDrops">
-                        <% item.itemDrops.forEach(itemDrop=> { %>
-                            <p class="p-0 m-0">ID: <%= itemDrop.itemId %>, Rate: <%= itemDrop.rate %>, Count: <%=
-                                            itemDrop.count %>
+                    <p class="col col-2 p-0 m-0" id="coin">
+                        <%= item.coin %>
+                    </p>
+                    <div class="col col-6 p-0 m-0" id="itemDrops">
+                        <% item.itemDrops.forEach(itemDrop=> {
+                            itemDrop.percent = totalRate > 0 ? ((itemDrop.rate / totalRate) * 100).toFixed(1) : "0";%>
+                            <p class="p-0 m-0">
+                                <%= itemDrop.itemName %> (<%= itemDrop.itemId %>) x<%= itemDrop.count %> [<%=
+                                                itemDrop.percent %>%]
                             </p>
                             <% }); %>
                     </div>

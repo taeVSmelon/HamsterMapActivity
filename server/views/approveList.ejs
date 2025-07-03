@@ -194,26 +194,31 @@
             <div class="row px-5 py-3 fw-bold fs-4">
                 <div></div>
                 <div class="col col-3 p-0 m-0 align-self-center">Name</div>
-                <div class="col col-2 p-0 m-0 align-self-center">Use Time</div>
-                <div class="col col-3 p-0 m-0 align-self-center">Stage Number</div>
-                <div class="col col-4 p-0 m-0 align-self-center">Actions</div>
+                <div class="col col-1 p-0 m-0 align-self-center">Use Time</div>
+                <div class="col col-1 p-0 m-0 align-self-center">Stage Id</div>
+                <div class="col col-4 p-0 m-0 align-self-center">Stage Name</div>
+                <div class="col col-3 p-0 m-0 align-self-center">Actions</div>
             </div>
+
             <% data.forEach(item=> { %>
                 <div class="row px-5 py-3 fs-5 align-items-center approve-item" data-user-id="<%= item.userId %>"
                     data-stage-id="<%= item.stageId %>">
                     <p class="col col-3 p-0 m-0" id="username">
                         <%= item.nickname %>
                     </p>
-                    <p class="col col-2 p-0 m-0" id="useTime">
+                    <p class="col col-1 p-0 m-0" id="useTime">
                         <%= (item.endTime - item.startTime) / 1000 %>s
+                    </p>
+                    <p class="col col-1 p-0 m-0" id="stageId">
+                        <%= item.stageId %>
+                    </p>
+                    <p class="col col-4 p-0 m-0" id="stageName">
+                        <%= item.stageName %>
                     </p>
                     <span id="message" style="display: none;">
                         <%= item.message %>
                     </span>
-                    <p class="col col-3 p-0 m-0" id="stage-id">
-                        <%= item.stageId %>
-                    </p>
-                    <div class="col col-4 p-0 m-0">
+                    <div class="col col-3 p-0 m-0">
                         <button class="approve-btn" data-user-id="<%= item.userId %>"
                             data-stage-id="<%= item.stageId %>" data-start-time="<%= item.startTime %>"
                             data-end-time="<%= item.endTime %>" data-item-useds="<%= item.itemUseds %>">Approve</button>

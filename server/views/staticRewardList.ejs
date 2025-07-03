@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Static Reward List</title>
+
+    <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        img#icon {
+            max-width: 300px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-xl">
+        <h1 class="mb-4">Static Reward List</h1>
+
+        <div class="row px-5 py-3 fs-3 align-items-center fw-bold alert alert-dark">
+            <p class="col col-2 p-0 m-0">ID</p>
+            <p class="col col-3 p-0 m-0">Reward</p>
+            <p class="col col-3 p-0 m-0">Position</p>
+            <p class="col col-2 p-0 m-0" title="Can Collect One Time">CCOT</p>
+            <p class="col col-2 p-0 m-0">Options</p>
+        </div>
+
+        <div class="m-0 p-0">
+            <% data=data.sort((a, b)=> a.id - b.id); %>
+                <% data.forEach(staticReward=> { %>
+                    <div class="row px-5 py-3 fs-5 align-items-center alert alert-secondary">
+                        <p class="col col-2 p-0 m-0">
+                            <%=staticReward.id %>
+                        </p>
+                        <p class="col col-3 p-0 m-0">
+                            <%=staticReward.rewardId %>
+                        </p>
+                        <p class="col col-3 p-0 m-0">
+                            <%=staticReward.rewardPosition.x %>, <%=staticReward.rewardPosition.y %>
+                        </p>
+                        <p class="col col-2 p-0 m-0">
+                            <%=staticReward.canCollectOneTime %>
+                        </p>
+                        <button class="col col-2 btn btn-danger delete-static-reward mt-2"
+                            data-static-reward-id="<%=staticReward.id %>">Delete</button>
+                    </div>
+                    <% }); %>
+        </div>
+    </div>
+
+    <script>
+        const deleteStaticRewardButtons = document.querySelectorAll(".delete-static-reward");
+
+        async function deleteStaticReward(staticRewardId) {
+            staticRewardId = Number.parseInt(staticRewardId);
+
+            // แสดง popup ยืนยัน
+            const confirmed = window.confirm(`Are you sure you want to delete static reward ID ${staticRewardId}?`);
+
+            if (!confirmed) return; // ถ้าไม่ตกลงก็หยุด
+
+            const response = await fetch(`./staticReward/${staticRewardId}/delete`, {
+                method: "DELETE",
+            });
+
+            const result = await response.json();
+            alert(JSON.stringify(result, null, 2));
+
+            location.reload();
+        }
+
+        deleteStaticRewardButtons.forEach(deleteStaticRewardButton => {
+            deleteStaticRewardButton.onclick = () => deleteStaticReward(deleteStaticRewardButton.getAttribute("data-static-reward-id"));
+        });
+    </script>
+
+    <script src="../bs-5/js/bootstrap.min.js"></script>
+</body>
+
+</html>

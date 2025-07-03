@@ -2,11 +2,11 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Item List</title>
 
-    <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet" />
 
     <style>
         img#icon {
@@ -17,34 +17,143 @@
 
 <body>
     <div class="container">
-        <h1 class="mb-4">Item List</h1>
+        <h1 class="mb-4">Item List by Type</h1>
 
-        <div class="row px-5 py-3 fs-3 align-items-center fw-bold alert alert-dark">
-            <p class="col col-3 p-0 m-0">ID</p>
-            <p class="col col-3 p-0 m-0">Name</p>
-            <p class="col col-3 p-0 m-0">Description</p>
-            <p class="col col-3 p-0 m-0">Can Stack</p>
-        </div>
+        <% const groupedItems={}; data.forEach(item=> {
+            if (!groupedItems[item.type]) {
+            groupedItems[item.type] = [];
+            }
+            groupedItems[item.type].push(item);
+            });
+            const types = Object.keys(groupedItems).sort();
+            %>
 
-        <div class="m-0 p-0">
-            <% data.forEach(item=> { %>
-                <div class="row px-5 py-3 fs-5 align-items-center alert alert-secondary">
-                    <p class="col col-3 p-0 m-0" id="id">
-                        <%= item.id %>
-                    </p>
-                    <p class="col col-3 p-0 m-0" id="name">
-                        <%= item.name %>
-                    </p>
-                    <p class="col col-3 p-0 m-0" id="description">
-                        <%= item.description %>
-                    </p>
-                    <p class="col col-3 p-0 m-0" id="canStack">
-                        <%= item.canStack %>
-                    </p>
+            <% types.forEach(type=> { %>
+                <button class="alert alert-link w-100 fs-4 fw-normal text-dark mb-3 p-3" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#type-<%=type.replace(/\s+/g, '-')%>"
+                    aria-expanded="false" aria-controls="type-<%=type.replace(/\s+/g, '-')%>">
+                    Type: <%= type %> (Total: <%= groupedItems[type].length %>)
+                </button>
+
+                <div class="collapse mb-4" id="type-<%=type.replace(/\s+/g, '-')%>">
+                    <div class="card card-body">
+                        <% groupedItems[type].sort((a, b)=> a.id - b.id).forEach((item, idx) => { %>
+                            <div class="row fs-5 pb-2 align-items-center">
+                                <p class="col col-2 p-0 m-0">
+                                    <%= item.id %>
+                                </p>
+                                <p class="col col-4 p-0 m-0">
+                                    <%= item.name %> (<%= item.rank %>)
+                                </p>
+                                <p class="col col-4 p-0 m-0">
+                                    <%= item.description %>
+                                </p>
+
+                                <% if (type==='VoidItem' || type==='CoreItem' ) { %>
+                                    <button class="btn btn-sm btn-outline-primary col col-1" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#item-details-<%= item.id %>"
+                                        aria-expanded="false" aria-controls="item-details-<%= item.id %>">
+                                        Show Data
+                                    </button>
+                                    <button class="btn btn-sm btn-danger col col-1 delete-item" type="button"
+                                        data-item-id="<%= item.id %>">
+                                        Delete
+                                    </button>
+                                    <% } else { %>
+                                        <button class="btn btn-sm btn-danger col col-2 delete-item" type="button"
+                                            data-item-id="<%= item.id %>">
+                                            Delete
+                                        </button>
+                                        <% } %>
+                            </div>
+
+                            <% if (type==='VoidItem' ) { %>
+                                <div class="collapse mb-3" id="item-details-<%= item.id %>">
+                                    <div class="card card-body bg-light">
+                                        <p class="mb-1">Prefab Name: <strong>
+                                                <%= item.voidPrefabName ?? 'N/A' %>
+                                            </strong></p>
+                                        <% if (item.skills.length> 0) { %>
+                                            <div class="mb-1">Skills:
+                                                <% item.skills.forEach(skill=> { %>
+                                                    <p class="ms-3 mb-1">
+                                                        <%= skill.skillName ?? 'N/A' %><strong> Lv.<%= skill.level
+                                                                    ?? 'N/A' %></strong>
+                                                    </p>
+                                                    <% }); %>
+                                            </div>
+                                            <% } else { %>
+                                                <p class="mb-1">Skills: <strong>None</strong></p>
+                                                <% } %>
+                                                    <hr>
+                                                    <p class="mb-1">Min Damage: <strong>
+                                                            <%= item.minDamage ?? 'N/A' %>
+                                                        </strong></p>
+                                                    <p class="mb-1">Max Damage: <strong>
+                                                            <%= item.maxDamage ?? 'N/A' %>
+                                                        </strong></p>
+                                                    <hr>
+                                                    <p class="mb-1">Min Speed: <strong>
+                                                            <%= item.minSpeed ?? 'N/A' %>
+                                                        </strong></p>
+                                                    <p class="mb-1">Max Speed: <strong>
+                                                            <%= item.maxSpeed ?? 'N/A' %>
+                                                        </strong></p>
+                                                    <hr>
+                                                    <p class="mb-1">Charge Time: <strong>
+                                                            <%= item.chargeTime ?? 'N/A' %>
+                                                        </strong></p>
+                                                    <p class="mb-1">Force Power: <strong>
+                                                            <%= item.forcePower ?? 'N/A' %>
+                                                        </strong></p>
+                                                    <p class="mb-0">Life Time: <strong>
+                                                            <%= item.lifeTime ?? 'N/A' %>
+                                                        </strong></p>
+                                    </div>
+                                </div>
+                                <% } else if (type==='CoreItem' ) { %>
+                                    <div class="collapse mb-3" id="item-details-<%= item.id %>">
+                                        <div class="card card-body bg-light">
+                                            <p class="mb-1">Health: <strong>
+                                                    <%= item.health ?? 'N/A' %>
+                                                </strong></p>
+                                            <p class="mb-0">Armor: <strong>
+                                                    <%= item.armor ?? 'N/A' %>
+                                                </strong></p>
+                                        </div>
+                                    </div>
+                                    <% } %>
+                                        <% }) %>
+                    </div>
                 </div>
-                <% }); %>
-        </div>
+                <% }) %>
     </div>
+
+    <script>
+        const deleteItemButtons = document.querySelectorAll(".delete-item");
+
+        async function deleteItem(itemId) {
+            itemId = Number.parseInt(itemId);
+
+            // แสดง popup ยืนยัน
+            const confirmed = window.confirm(`Are you sure you want to delete item ID ${itemId}?`);
+
+            if (!confirmed) return; // ถ้าไม่ตกลงก็หยุด
+
+            const response = await fetch(`./item/${itemId}/delete`, {
+                method: "DELETE",
+            });
+
+            const result = await response.json();
+            alert(JSON.stringify(result, null, 2));
+
+            location.reload();
+        }
+
+        deleteItemButtons.forEach(deleteItemButton => {
+            deleteItemButton.onclick = () => deleteItem(deleteItemButton.getAttribute("data-item-id"));
+        });
+    </script>
 
     <script src="../bs-5/js/bootstrap.min.js"></script>
 </body>

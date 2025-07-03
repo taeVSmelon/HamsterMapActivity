@@ -35,6 +35,13 @@
         #stage-container {
             margin-left: 25px;
         }
+
+        ::placeholder {
+            font-weight: 300 !important;
+            color: #bbb !important;
+            font-style: italic !important;
+            opacity: 0.4 !important;
+        }
     </style>
 </head>
 
@@ -74,14 +81,13 @@
 
                 <div class="stage-content">
                     <div id="CodeStage" class="stage">
-                        <div class="description-entry"></div>
+                        <div id="description-entry"></div>
 
-                        <button type="button" class="btn btn-secondary"
-                            onclick="createTextValue(this.previousElementSibling)">
+                        <button id="create-text-btn" type="button" class="btn btn-secondary">
                             Create Text
                         </button>
 
-                        <input type="file" accept="image/*" onchange="handleImageUpload(this)">
+                        <input id="upload-image-input" type="file" accept="image/*">
 
                         <br><br>
 
@@ -100,10 +106,9 @@
                         <br>
                         <hr><br>
 
-                        <div class="npc-entry"></div>
+                        <div id="npc-entry"></div>
 
-                        <button type="button" class="btn btn-secondary"
-                            onclick="createNpc(this, this.previousElementSibling)">
+                        <button id="create-npc-btn" type="button" class="btn btn-secondary">
                             Create NPC
                         </button>
 
@@ -123,7 +128,8 @@
                         <div class="dungeon-entry">
                             <div id="waves-entry"></div>
 
-                            <button type="button" class="btn btn-secondary" id="create-wave-btn">Create Wave</button>
+                            <button type="button" class="btn btn-secondary w-100" id="create-wave-btn">Create
+                                Wave</button>
                         </div>
                     </div>
 
@@ -140,8 +146,19 @@
     <script>
         const enemyNameData = JSON.parse('<%- JSON.stringify(enemyNames) %>');
         const selector = document.querySelector("#itemSelector");
+        const descriptionEntry = document.getElementById("description-entry");
+        const createTextButton = document.getElementById("create-text-btn");
+        const uploadImageInput = document.getElementById("upload-image-input");
+        const npcEntry = document.getElementById("npc-entry");
+        const createNpcButton = document.getElementById("create-npc-btn");
         const createWaveButton = document.querySelector("#create-wave-btn");
         const form = document.getElementById("stage-form");
+
+        createTextButton.onclick = () => createTextValue(descriptionEntry);
+
+        uploadImageInput.onchange = () => handleImageUpload(uploadImageInput);
+
+        createNpcButton.onclick = () => createNpc(createNpcButton, npcEntry);
 
         createWaveButton.onclick = () => {
             const wavesEntry = document.getElementById("waves-entry");
@@ -166,7 +183,7 @@
             valueEntry.classList.add("value-entry");
             valueEntry.classList.add("value-text");
 
-            const textInput = document.createElement("input");
+            const textInput = document.createElement("textarea");
             textInput.name = "value";
             textInput.type = "text";
             textInput.placeholder = "Text";
@@ -285,7 +302,7 @@
 
             const addEnemyBtn = document.createElement("button");
             addEnemyBtn.type = "button";
-            addEnemyBtn.classList.add("btn", "btn-sm", "btn-secondary", "mb-2");
+            addEnemyBtn.classList.add("btn", "btn-sm", "btn-secondary", "mb-2", "w-100");
             addEnemyBtn.innerText = "Add Normal Enemy";
             addEnemyBtn.onclick = () => {
                 const enemyEntry = document.createElement("div");
@@ -324,7 +341,7 @@
 
             // ---- Boss Section ----
             const bossSection = document.createElement("div");
-            bossSection.classList.add("boss-section", "mb-2");
+            bossSection.classList.add("boss-section", "mb-2", "d-none");
 
             const bossLabel = document.createElement("label");
             bossLabel.innerText = "Boss (optional):";
@@ -353,10 +370,29 @@
             bossPosY.placeholder = "Boss Position Y";
             bossPosY.classList.add("form-control", "mb-1");
 
+            const removeBossBtn = document.createElement("button");
+            removeBossBtn.type = "button";
+            removeBossBtn.classList.add("btn", "btn-sm", "btn-danger");
+            removeBossBtn.innerText = "Remove Boss";
+            removeBossBtn.onclick = () => {
+                bossSection.classList.add("d-none");
+                addBossBtn.classList.remove("d-none");
+            };
+
             bossSection.appendChild(bossLabel);
             bossSection.appendChild(bossSelect);
             bossSection.appendChild(bossPosX);
             bossSection.appendChild(bossPosY);
+            bossSection.appendChild(removeBossBtn);
+
+            const addBossBtn = document.createElement("button");
+            addBossBtn.type = "button";
+            addBossBtn.classList.add("btn", "btn-sm", "btn-secondary", "mb-2", "w-100");
+            addBossBtn.innerText = "Add Boss";
+            addBossBtn.onclick = () => {
+                addBossBtn.classList.add("d-none");
+                bossSection.classList.remove("d-none");
+            };
 
             // ---- Remove Wave ----
             const removeWaveBtn = document.createElement("button");
@@ -373,6 +409,8 @@
             waveEntry.appendChild(addEnemyBtn);
             waveEntry.appendChild(document.createElement("hr"));
             waveEntry.appendChild(bossSection);
+            waveEntry.appendChild(addBossBtn);
+            waveEntry.appendChild(document.createElement("hr"));
             waveEntry.appendChild(removeWaveBtn);
 
             wavesEntry.appendChild(waveEntry);
@@ -400,8 +438,7 @@
             if (rewardId) stageData.set("rewardId", rewardId);
 
             if (stageType == "CodeStage") {
-                const descriptionValueEntries = form.querySelector(".description-entry")?.querySelectorAll(".value-entry") ?? [];
-                const npcEntry = form.querySelector(".npc-entry");
+                const descriptionValueEntries = descriptionEntry.querySelectorAll(".value-entry") ?? [];
                 const npcName = npcEntry?.querySelector("*[name='npcName']")?.value;
                 const npcDialogEntries = npcEntry.querySelector(".npc-dialog-entry")?.querySelectorAll(".value-entry") ?? [];
                 const exampleOutput = form.querySelector("*[name='exampleOutput']")?.value;

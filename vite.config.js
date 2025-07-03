@@ -1,5 +1,4 @@
 import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
 import dotenv from "dotenv";
 dotenv.config({ path: "./.env" });
 
@@ -10,7 +9,7 @@ export default defineConfig({
   server: {
     port: process.env.PUBLIC_PORT,
     allowedHosts: [
-      'briefs-madrid-term-asylum.trycloudflare.com',
+      'behavioral-paris-family-cubic.trycloudflare.com',
       'localhost',  // ถ้ายังไม่เพิ่ม localhost
     ],
     proxy: {

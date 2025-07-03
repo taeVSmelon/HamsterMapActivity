@@ -90,7 +90,7 @@ class InventoryService {
 
     let updatedUser;
 
-    if (item.stackable) {
+    if (item.canStack) {
       if (existingItem.count > count) {
         updatedUser = await userModel.findOneAndUpdate(
           { id: userId, "stats.inventory.item": itemId },
@@ -152,15 +152,19 @@ class InventoryService {
     if (!itemA) throw new InventoryException("ItemA not found", 404);
     if (!itemB) throw new InventoryException("ItemB not found", 404);
 
-    const user = await userModel.findOne({ id: userId });
+    const user = await userModel
+      .findOne({ id: userId })
+      .populate([
+        "stats.equipment.weapon1",
+        "stats.equipment.weapon2",
+        "stats.equipment.weapon3",
+        "stats.equipment.core",
+        "stats.inventory.item"
+      ])
+      .lean();
     if (!user) throw new InventoryException("User not found", 404);
 
-    let itemACount = user.stats.inventory.reduce((total, i) => {
-      if (i.item.toString() === itemA._id.toString()) {
-        return total + i.count;
-      }
-      return total;
-    }, 0);
+    let itemACount = user.stats.inventory.find(i => i.item.toString() === itemAId.toString())?.count ?? 0;
     let itemARemoveCount = 0;
     let itemBAddCount = 0;
 
@@ -172,17 +176,9 @@ class InventoryService {
 
     let updatedUser;
 
-    if (itemARemoveCount > 0 && itemBAddCount > 0) {
+    if (itemARemoveCount >= ratioAtoB && itemBAddCount > 0) {
       await InventoryService.removeItem(userId, itemAId, itemARemoveCount);
       updatedUser = await InventoryService.addItem(userId, itemBId, itemBAddCount);
-    } else {
-      updatedUser = (await user.populate([
-        "stats.equipment.weapon1",
-        "stats.equipment.weapon2",
-        "stats.equipment.weapon3",
-        "stats.equipment.core",
-        "stats.inventory.item"
-      ])).toObject();
     }
 
     return updatedUser;

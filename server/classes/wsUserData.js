@@ -3,6 +3,7 @@ import { FixedRewardService, RewardGroup } from "../services/fixedRewardService.
 import userModel from "../models/user.js";
 dotenv.config({ path: "./.env" });
 
+const AFK_REWARD_COUNT_PER_DAY = parseInt(process.env.AFK_REWARD_COUNT_PER_DAY);
 const MIN_AFK_TIME = eval(process.env.MIN_AFK_TIME);
 const MAX_AFK_TIME = eval(process.env.MAX_AFK_TIME);
 
@@ -15,16 +16,17 @@ const randomAfkTime = () => {
 class WsUserData {
   static instances = [];
 
-  constructor(ws, worldId, userId, stageId, loginTime) {
+  constructor(ws, worldId, userId, stageId, loginTime, oldAfkRewardTime = 0) {
     this.ws = ws;
-    this.worldId = typeof(worldId) === 'string' ? Number.parseInt(worldId) : worldId;
-    this.userId = typeof(userId) === 'string' ? Number.parseInt(userId) : userId;
-    this.stageId = typeof(stageId) === 'string' ? Number.parseInt(stageId) : stageId;
+    this.worldId = typeof (worldId) === 'string' ? Number.parseInt(worldId) : worldId;
+    this.userId = typeof (userId) === 'string' ? Number.parseInt(userId) : userId;
+    this.stageId = typeof (stageId) === 'string' ? Number.parseInt(stageId) : stageId;
+
     this.afkRewardTime = loginTime + randomAfkTime();
   }
 
   async updatePosition(stageId) {
-    stageId = typeof(stageId) === 'string' ? Number.parseInt(stageId) : stageId;
+    stageId = typeof (stageId) === 'string' ? Number.parseInt(stageId) : stageId;
     this.stageId = stageId;
 
     let username = null;
@@ -76,16 +78,49 @@ class WsUserData {
 
   async checkReward() {
     const timeNow = Date.now();
+    const nowDate = new Date();
+    const todayStr = nowDate.toDateString();
+
+    const user = await userModel.findOne({ id: this.userId });
+
+    if (!user) return null;
+
+    const afkData = user.afkReward || { afkRewardCount: 0, lastAfkRewardDate: null };
+
+    const lastDateStr = afkData.lastAfkRewardDate
+      ? new Date(afkData.lastAfkRewardDate).toDateString()
+      : null;
+
+    // รีเซ็ตหากวันเปลี่ยน
+    if (lastDateStr !== todayStr) {
+      afkData.afkRewardCount = 0;
+      afkData.lastAfkRewardDate = nowDate;
+    }
+
+    if (afkData.afkRewardCount >= AFK_REWARD_COUNT_PER_DAY) {
+      // ตั้งเวลาให้รอจนถึงวันถัดไป
+      const nextDay = new Date();
+      nextDay.setHours(24, 0, 0, 0);
+      this.afkRewardTime = nextDay.getTime();
+      return null;
+    }
 
     const duration = this.afkRewardTime - timeNow;
 
     if (duration <= 0) {
       this.afkRewardTime = Math.max(timeNow - 5, this.afkRewardTime) + randomAfkTime();
 
+      afkData.afkRewardCount++;
+      afkData.lastAfkRewardDate = nowDate;
+
+      // บันทึกลง DB
+      user.afkReward = afkData;
+      await user.save();
+
       return await FixedRewardService.rollReward(this.userId, RewardGroup.AFK_REWARD);
-    } else {
-      return null;
     }
+
+    return null;
   }
 
   static getAllWs() {
@@ -100,12 +135,12 @@ class WsUserData {
     return WsUserData.instances.find(user => user.userId == userId)?.ws;
   }
 
-  static addNew(ws, worldId, userId, stageId, loginTime) {
-    const wsUserData = new WsUserData(ws, worldId, userId, stageId, loginTime);
+  static addNew(ws, worldId, userId, stageId, loginTime, oldAfkRewardTime) {
+    const wsUserData = new WsUserData(ws, worldId, userId, stageId, loginTime, oldAfkRewardTime);
 
     WsUserData.instances.push(wsUserData);
 
-    wsUserData.updatePosition(stageId);
+    // wsUserData.updatePosition(stageId);
 
     return wsUserData;
   }

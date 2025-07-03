@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Add Item</title>
+
+    <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        ::placeholder {
+            font-weight: 300 !important;
+            color: #bbb !important;
+            font-style: italic !important;
+            opacity: 0.4 !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="mb-4">Add Item</h1>
+        
+        <form id="item-form" class="row">
+            <div class="col-12">
+                <label for="user-id">User Id</label>
+                <input type="text" class="form-control" name="user-id" placeholder="123456789" />
+            </div>
+            <div class="col-6">
+                <label for="item-id">Item Id</label>
+                <input type="text" class="form-control" name="item-id" placeholder="1000000" />
+            </div>
+            <div class="col-6">
+                <label for="item-count">Count</label>
+                <input type="number" class="form-control" name="item-count" min="0" value="1" />
+            </div>
+            <button type="submit" class="col-12 btn btn-success mt-3">Add Item</button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById("item-form");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const userId = formData.get("user-id");
+            const itemId = formData.get("item-id");
+            const count = Number.parseInt(formData.get("item-count"));
+
+            const payload = {
+                userId,
+                itemId,
+                count
+            };
+
+            const response = await fetch("./inventory/add", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            alert(JSON.stringify(result, null, 2));
+        });
+    </script>
+
+    <script src="../bs-5/js/bootstrap.min.js"></script>
+</body>
+
+</html>

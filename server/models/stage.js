@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
-import mongooseSequence from "mongoose-sequence";
-const AutoIncrement = mongooseSequence(mongoose);
+import AutoIncrement from "../plugins/autoIncrement.js";
 
 const enemyNames = {
     normal: [
@@ -135,12 +134,20 @@ const waveSchema = new mongoose.Schema(
     { _id: false }
 );
 
-const combatStageSchema = new mongoose.Schema({
-    dungeon: {
+const dungeonSchema = new mongoose.Schema(
+    {
         waves: {
             type: [waveSchema],
             required: true,
         },
+    },
+    { _id: false }
+);
+
+const combatStageSchema = new mongoose.Schema({
+    dungeon: {
+        type: dungeonSchema,
+        required: true
     },
 });
 
@@ -165,4 +172,4 @@ const stageModel = mongoose.model("Stage", stageSchema, "Stage");
 const codeStageModel = stageModel.discriminator("CodeStage", codeStageSchema, "CodeStage");
 const combatStageModel = stageModel.discriminator("CombatStage", combatStageSchema, "CombatStage");
 
-export { stageModel, codeStageModel, combatStageModel, stageSchema, enemyNames };
+export { stageModel, codeStageModel, combatStageModel, stageSchema, dungeonSchema, enemyNames };
