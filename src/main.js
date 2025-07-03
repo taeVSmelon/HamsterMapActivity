@@ -140,7 +140,7 @@ setupDiscordSdk().then(async (auth) => {
           return discordSdk.close(4001, "คุณไม่มียศ 'แฮมสเตอร์'");
         }
 
-        const profileLink = getProfileLink({ id, avatar });
+        let profileLink = getProfileLink({ id, avatar });
 
         if (profileLink && profileLink.endsWith(".gif")) {
           profileLink = profileLink.replace(".gif", ".png");
