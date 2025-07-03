@@ -26,7 +26,7 @@ import { staticRewardModel } from "./models/staticReward.js";
 import WsUserData from "./classes/wsUserData.js";
 import { FixedItemId, FixedRewardService, loadAllFixedItem, RewardGroup } from "./services/fixedRewardService.js";
 import FixedReward from "./classes/fixedReward.js";
-import { OpenAIException } from "./services/openAiService.js";
+import { OpenAIException } from "./services/openAIService.js";
 import { stageModel } from "./models/stage.js";
 import setupShop from "./shop.js";
 dotenv.config({ path: "./.env" });
