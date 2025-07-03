@@ -5,7 +5,7 @@ import { itemModel } from "../models/item.js";
 import { LeaderboardService } from "./leaderboardService.js";
 import { InventoryService } from "./inventoryService.js";
 import { codeStageModel, stageModel } from "../models/stage.js";
-import { OpenAIService, OpenAIException } from "./openAiService.js";
+import { OpenAIService, OpenAIException } from "./openAIService.js";
 
 class UserService {
   /**

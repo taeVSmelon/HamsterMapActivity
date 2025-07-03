@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { InventoryException } from "../services/inventoryService.js";
 import { UserException } from "../services/userService.js";
 import { LeaderboardException } from "../services/leaderboardService.js";
-import { OpenAIException } from "../services/openAiService.js";
+import { OpenAIException } from "../services/openAIService.js";
 
 const errorHandler = (err, req, res, next) => {
   console.log(err);
