@@ -18,69 +18,74 @@ const setupShop = async (app) => {
     app.get("/shop/list", authenticateToken, async (req, res) => {
         const user = await userModel.findOne({ id: req.userId }).lean();
         if (!user) return res.status(404).json({ error: "User not found" });
-        
+
         const now = Date.now();
-    
+
         let shopData = shopDatas.get(user.id);
-        let shopMap;
+        let shopList;
         let expiredTime;
-    
+
         if (shopData && (now - shopData.expiredTime < RESET_SHOP_ITEM_TIME)) {
-            shopMap = shopData.shopMap;
+            shopList = shopData.shop;
             expiredTime = shopData.expiredTime;
         } else {
             const items = await itemModel.find({ canBuy: true }).lean();
             if (items.length < 4) {
                 return res.status(500).json({ error: "Not enough items in shop" });
             }
-    
+
             const randomItems = getRandomItems(items, 4);
-            shopMap = new Map();
-            for (const item of randomItems) {
-                shopMap.set(item.id, item);
-            }
+            shopList = randomItems.map(item => ({
+                item: item,
+                outStock: false
+            }));
             expiredTime = now + RESET_SHOP_ITEM_TIME;
-    
+
             shopDatas.set(user.id, {
                 expiredTime: now + RESET_SHOP_ITEM_TIME,
-                shopMap: shopMap
+                shop: shopList
             });
         }
-    
-        return res.json({ expiredTime: expiredTime, shopItems: [...shopMap.values()] });
+
+        return res.json({ expiredTime: expiredTime, shop: shopList });
     });
 
     app.post("/shop/buy", authenticateToken, checkIsJson, async (req, res) => {
         const { itemId } = req.body;
-    
+
         if (!itemId) return res.status(400).json({ error: "Don't have item id" });
-    
+
         const item = await itemModel.findOne({ id: itemId }).lean();
         if (!item) return res.status(404).json({ error: "Item not found" });
-    
+
         const user = await userModel.findOne({ id: req.userId }).lean();
         if (!user) return res.status(404).json({ error: "User not found" });
-    
+
         const shopData = shopDatas.get(user.id);
         const now = Date.now();
-    
+
         if (!shopData) return res.status(404).json({ error: "Shop not found" });
-    
+
         if (now - shopData.expiredTime >= RESET_SHOP_ITEM_TIME) {
             shopDatas.delete(user.id);
             return res.status(400).json({ error: "Shop has expired. Please refresh." });
         }
-    
-        const userShopMap = shopData.shopMap;
-    
-        if (!userShopMap.has(itemId)) {
+
+        const shopList = shopData.shop;
+        const shopItem = shopList.find(entry => entry.item.id === itemId);
+
+        if (!shopItem) {
             return res.status(400).json({ error: "Can't find item in your shop" });
         }
-        
-        userShopMap.set(itemId, null);
-    
+
+        if (shopItem.outStock) {
+            return res.status(400).json({ error: "Item already bought" });
+        }
+
+        shopItem.outStock = true;
+
         const updatedUser = await InventoryService.addItem(user.id, item._id);
-    
+
         return res.json({ item, user: updatedUser });
     });
 };
