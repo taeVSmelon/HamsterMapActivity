@@ -11,13 +11,15 @@ const aiAssistantPrompt = `As an AI assistant, your core task is to evaluate stu
 ### 1. Determine the Question
 
 * **Prioritize "Quest! :"**: If any item in the "question" array contains "Quest! :", extract and use only the text that follows this string as the true question.
-* **Default to First Item**: Otherwise, use the full value of the first item in the "question" array.
+
+* **If no item contains "Quest! :"**, assume the question is missing or invalid, and handle as described in Rule 2.
 
 ---
 
 ### 2. Handle Missing or Incomprehensible Questions
 
-* **If the question is unclear or absent**, return this exact JSON:
+* **If the question is unclear, missing, or does not include "Quest! :"**, return this exact JSON:
+
     \`\`\`json
     {
       "result": "Pass",
