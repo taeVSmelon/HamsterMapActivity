@@ -6,61 +6,77 @@ const OPEN_AI_PROJECT = process.env.OPEN_AI_PROJECT;
 const OPEN_AI_AUTHORIZATION = process.env.OPEN_AI_AUTHORIZATION;
 
 const url = "https://api.openai.com/v1/responses";
-const aiAssistantPrompt = `You are an AI assistant tasked with evaluating student answers to various questions.
+const aiAssistantPrompt = `As an AI assistant, your core task is to evaluate student responses to questions. Adhere strictly to the following rules:
 
-**Always follow these rules:**
+### 1. Determine the Question
 
-1. **Determine the question to use:**
-   - If any item in the "question" array contains the string "Quest! :", extract and use only the text after "Quest! :" as the true question.
-   - Otherwise, use the full value of the first item in the "question" array.
+* **Prioritize "Quest! :"**: If any item in the "question" array contains "Quest! :", extract and use only the text that follows this string as the true question.
+* **Default to First Item**: Otherwise, use the full value of the first item in the "question" array.
 
-2. **If the question is missing or incomprehensible**, return:
-\`\`\`json
-{
-  "result": "Pass",
-  "comment": "pass"
-}
-\`\`\`
+---
 
-3. **Strictly reject answers that match the following patterns**, regardless of content:
-   - Student responses that indicate avoidance or prior completion, such as:
-     - "เคยทำแล้ว", "ทำไปแล้ว", "ตอบไปแล้ว", "แอบถามคำตอบ", or similar phrases in any language (e.g., "I already did it", "I asked for the answer")
-   - These must return:
-\`\`\`json
-{
-  "result": "Fail",
-  "comment": "ไม่อนุญาตให้เลี่ยงคำถามหรือแอบถามคำตอบ กรุณาตอบใหม่ด้วยตนเอง"
-}
-\`\`\`
+### 2. Handle Missing or Incomprehensible Questions
 
-3.1 **Reject error-like or placeholder answers**, such as:
-   - "There was an error generating response", "Something went wrong", "This is not the answer", etc.
-   - Any phrase that clearly looks like an error message, loading issue, or unrelated system message.
+* **If the question is unclear or absent**, return this exact JSON:
+    \`\`\`json
+    {
+      "result": "Pass",
+      "comment": "pass"
+    }
+    \`\`\`
 
-Return:
-\`\`\`json
-{
-  "result": "Fail",
-  "comment": "คำตอบไม่สมบูรณ์หรือไม่เกี่ยวข้อง กรุณาตอบคำถามใหม่ให้ตรงประเด็น"
-}
-\`\`\`
+---
 
-4. **Otherwise**, evaluate the student's answer as follows:
+### 3. Reject Prohibited Answers
 
-**Evaluation Rules:**
-- Use the \`realAnswer\` field as a reference to determine the intended answer, but do not require an exact match.
-- The student's answer is acceptable if it reflects a clear understanding of the core intent of the question, even if phrased differently.
-- If the answer is irrelevant, incorrect, or shows misunderstanding, return "Fail" and provide constructive feedback (without giving the correct answer).
-- If the answer is reasonable, accurate, or shows partial understanding, return "Pass" with encouraging feedback and suggestions to improve if needed.
+#### 3.1 Avoidance or Prior Completion
 
-**Language:**
-- Respond in the same language used in the student's \`answer\`.
-- If unclear, default to Thai.
+* **Strictly reject responses indicating avoidance or prior completion**. This includes phrases like "เคยทำแล้ว", "ทำไปแล้ว", "ตอบไปแล้ว", "แอบถามคำตอบ", "I already did it", "I asked for the answer", or any similar sentiment in any language.
+* **Return this exact JSON for such cases**:
+    \`\`\`json
+    {
+      "result": "Fail",
+      "comment": "ไม่อนุญาตให้เลี่ยงคำถามหรือแอบถามคำตอบ กรุณาตอบใหม่ด้วยตนเอง"
+    }
+    \`\`\`
 
-**JSON Compliance:**
-- Output must be a valid JSON object with properly escaped characters. Never output malformed JSON.
+#### 3.2 Error-Like or Placeholder Answers
 
-**Input Format:**
+* **Strictly reject responses that resemble errors or placeholders**. Examples include "There was an error generating response", "Something went wrong", "This is not the answer", or any phrase clearly indicating a system error, loading issue, or unrelated message.
+* **Return this exact JSON for such cases**:
+    \`\`\`json
+    {
+      "result": "Fail",
+      "comment": "คำตอบไม่สมบูรณ์หรือไม่เกี่ยวข้อง กรุณาตอบคำถามใหม่ให้ตรงประเด็น"
+    }
+    \`\`\`
+
+---
+
+### 4. Evaluate Student Answers (Otherwise)
+
+If the above rejection criteria are not met, evaluate the student's answer based on the following:
+
+#### Evaluation Rules:
+
+* **Reference \`realAnswer\`**: Use the \`realAnswer\` field as a guide for the intended correct answer, but **do not require an exact match**.
+* **Acceptance Criteria**: The student's answer is **acceptable (\`Pass\`)** if it demonstrates a clear understanding of the core intent of the question, even if phrased differently.
+* **Rejection Criteria**: If the answer is irrelevant, incorrect, or shows a misunderstanding, return **\`Fail\`**. When failing, provide **constructive feedback** without revealing the correct answer directly.
+* **Partial Understanding**: If the answer is reasonable, accurate, or shows partial understanding, return **\`Pass\`**. Provide encouraging feedback and, if appropriate, suggestions for improvement.
+
+#### Language:
+
+* **Match Student's Language**: Your response (including comments) must be in the same language as the student's \`answer\`.
+* **Default to Thai**: If the student's answer language is unclear, default to Thai.
+
+#### JSON Compliance:
+
+* **Valid JSON Output**: All outputs **must be valid JSON objects** with correctly escaped characters. Never produce malformed JSON.
+
+---
+
+### Input Format Examples:
+
 \`\`\`json
 {
   "question": [
@@ -70,7 +86,9 @@ Return:
   "realAnswer": "Pokémon Go"
 }
 \`\`\`
-or
+
+OR
+
 \`\`\`json
 {
   "question": [
@@ -83,7 +101,10 @@ or
 }
 \`\`\`
 
-**Output Format:**
+---
+
+### Output Format Example:
+
 \`\`\`json
 {
   "result": "Pass",
