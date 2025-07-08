@@ -792,7 +792,7 @@ adminRouter.delete("/world/:worldId/stage/:stageId/delete", async (req, res) => 
 });
 
 adminRouter.post("/upload-image", checkIsJson, async (req, res) => {
-  const { base64 } = req.body;
+  const { base64, defaultScale } = req.body;
 
   if (!base64) {
     return res.status(400).json({ error: "No image data" });
@@ -813,20 +813,27 @@ adminRouter.post("/upload-image", checkIsJson, async (req, res) => {
   const filePath = path.join(__dirname, "server/uploads", filename);
 
   try {
-    // Resize the image with max size 256x256, keeping aspect ratio
-    const resizedBuffer = await sharp(imageBuffer)
-      .resize(256, 256, {
-        fit: "inside", // fit within 256x256 box
-        withoutEnlargement: true, // don't upscale small images
-      })
-      .toFormat(ext === "jpg" ? "jpeg" : ext)
-      .toBuffer();
+    let finalBuffer;
 
-    fs.writeFileSync(filePath, resizedBuffer);
+    if (defaultScale === true) {
+      // Don't resize
+      finalBuffer = imageBuffer;
+    } else {
+      // Resize the image with max size 256x256, keeping aspect ratio
+      finalBuffer = await sharp(imageBuffer)
+        .resize(256, 256, {
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .toFormat(ext === "jpg" ? "jpeg" : ext)
+        .toBuffer();
+    }
+
+    fs.writeFileSync(filePath, finalBuffer);
 
     return res.json({
       filename,
-      path: `/uploads/${filename}`
+      path: `/uploads/${filename}`,
     });
   } catch (error) {
     console.error("Resize error:", error);

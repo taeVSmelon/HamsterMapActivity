@@ -464,7 +464,7 @@
                             headers: {
                                 "Content-Type": "application/json"
                             },
-                            body: JSON.stringify({ base64: base64String })
+                            body: JSON.stringify({ base64: base64String, defaultScale: true })
                         });
 
                         const result = await response.json();
@@ -511,7 +511,7 @@
                                 headers: {
                                     "Content-Type": "application/json"
                                 },
-                                body: JSON.stringify({ base64: base64String })
+                                body: JSON.stringify({ base64: base64String, defaultScale: true })
                             });
 
                             const result = await response.json();
