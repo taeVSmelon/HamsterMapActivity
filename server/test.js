@@ -111,7 +111,7 @@ const runEvaluationsInLoop = async ( numberOfIterations) => {
 const askQuestion = (query) => new Promise(resolve => rl.question(query, resolve));
 
 async function main() {
-  const iterations = 10; // กำหนดจำนวนรอบที่ต้องการ
+  const iterations = 20; // กำหนดจำนวนรอบที่ต้องการ
 
   try {
     await runEvaluationsInLoop(iterations);
