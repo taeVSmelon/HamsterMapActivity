@@ -182,9 +182,9 @@ adminRouter.get("/addItem", async (req, res) => {
   res.render("addItem");
 });
 
-adminRouter.get("/removeClearedStage", async (req, res) => {
-  res.render("removeClearedStage");
-});
+// adminRouter.get("/removeClearedStage", async (req, res) => {
+//   res.render("removeClearedStage");
+// });
 
 adminRouter.get("/world/:worldId", async (req, res) => {
   const { worldId } = req.params;
