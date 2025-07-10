@@ -187,6 +187,8 @@
             textInput.name = "value";
             textInput.type = "text";
             textInput.placeholder = "Text";
+            textInput.style.resize = "both";
+            textInput.style.overflow = "auto";
             textInput.setAttribute("required", true);
 
             const removeBtn = document.createElement("button");
@@ -207,10 +209,10 @@
             const valueEntry = document.createElement("div");
             valueEntry.classList.add("value-entry");
             valueEntry.classList.add("value-image");
+            valueEntry.classList.add("row");
 
             // สร้าง preview ใหม่
             const imagePreview = document.createElement("img");
-            imagePreview.classList.add("preview");
             imagePreview.name = "value";
             imagePreview.src = imageSrc;
 
