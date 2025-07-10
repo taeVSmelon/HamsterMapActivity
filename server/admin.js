@@ -182,6 +182,10 @@ adminRouter.get("/addItem", async (req, res) => {
   res.render("addItem");
 });
 
+adminRouter.get("/removeClearedStage", async (req, res) => {
+  res.render("removeClearedStage");
+});
+
 adminRouter.get("/world/:worldId", async (req, res) => {
   const { worldId } = req.params;
 
@@ -863,7 +867,7 @@ adminRouter.post("/upload-image", checkIsJson, async (req, res) => {
 //   });
 // });
 
-adminRouter.post("/inventory/add", checkIsJson, async (req, res) => {
+adminRouter.post("/user/inventory/add", checkIsJson, async (req, res) => {
   const { userId, itemId, count } = req.body;
 
   if (!userId) {
@@ -892,6 +896,32 @@ adminRouter.post("/inventory/add", checkIsJson, async (req, res) => {
 
   return res.json({
     inventory: newUser.stats.inventory
+  })
+});
+
+adminRouter.post("/user/clearedStage/remove", checkIsJson, async (req, res) => {
+  const { userId, stageId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ error: "User id is required" });
+  }
+  
+  if (!stageId) {
+    return res.status(400).json({ error: "Item id is required" });
+  }
+  
+  const user = await userModel.findOne({ id: userId });
+
+  if (!user) {
+    return res.status(404).json({ error: "User not found"});
+  }
+
+  user.stats.clearedStages = user.stats.clearedStages.filter(cs => cs.stageId !== stageId);
+
+  await user.save();
+
+  return res.json({
+    clearedStages: user.stats.clearedStages
   })
 });
 

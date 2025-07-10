@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Create Stage</title>
+
+    <link href="../bs-5/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        .resizable-textarea {
+          resize: both;
+          overflow: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h3 class="mb-4">User Submission</h3>
+
+        <form id="submission-form">
+          <div class="mb-3">
+            <label for="userId" class="form-label">User ID</label>
+            <input type="text" class="form-control" id="userId" name="userId" required>
+          </div>
+          <div class="mb-3">
+            <label for="stageId" class="form-label">Stage ID</label>
+            <input type="text" class="form-control" id="stageId" name="stageId" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById("submission-form");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const userId = formData.get("userId");
+            const stageId = formData.get("stageId");
+
+            const payload = {
+                userId,
+                stageId
+            }
+
+            const response = await fetch(`./user/clearedStage/remove`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            alert(JSON.stringify(result, null, 2));
+        });
+    </script>
+
+    <script src="../bs-5/js/bootstrap.min.js"></script>
+</body>
+
+</html>
